@@ -4,11 +4,12 @@ import { toast } from 'sonner';
 import { useApp } from '@/store/AppContext';
 import { Avatar } from '@/components/common/Basics';
 import { ROLE_LABELS } from '@/types/models';
+import { isSupabaseAuthEnabled } from '@/services/supabaseAuth';
 
 export default function LoginPage() {
   const { db, login } = useApp();
-  const [email, setEmail] = useState(db.employees.find((e) => e.role === 'yonetici' && e.active)?.email ?? '');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState(isSupabaseAuthEnabled ? 'alperoyanik@gmail.com' : (db.employees.find((e) => e.role === 'yonetici' && e.active)?.email ?? ''));
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -116,30 +117,39 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-6 rounded-xl border bg-muted/40 p-4">
-              <p className="text-xs font-semibold">Geliştirme / demo hesabı</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Bu sürümde giriş akışı demo kullanıcılarıyla çalışır. Gerçek sunucu kimlik doğrulaması sonraki backend adımında bağlanacaktır.
-              </p>
-              <div className="mt-3 space-y-1.5">
-                {db.employees.filter((e) => e.active).slice(0, 4).map((employee) => (
-                  <button
-                    key={employee.id}
-                    type="button"
-                    onClick={() => setEmail(employee.email)}
-                    className="flex w-full items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left hover:bg-secondary"
-                  >
-                    <Avatar name={employee.name} color={employee.color} size="sm" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-medium">{employee.name}</span>
-                      <span className="block truncate text-[10px] text-muted-foreground">{ROLE_LABELS[employee.role]}</span>
-                    </span>
-                    <span className="text-[10px] text-primary">Seç</span>
-                  </button>
-                ))}
+            {isSupabaseAuthEnabled ? (
+              <div className="mt-6 rounded-xl border bg-muted/40 p-4">
+                <p className="text-xs font-semibold">Güvenli giriş</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Giriş bilgileriniz Supabase Auth tarafından doğrulanır. Şifreniz uygulamanın veritabanında tutulmaz.
+                </p>
               </div>
-              <p className="mt-3 text-[10px] text-muted-foreground">Demo şifre: 123456</p>
-            </div>
+            ) : (
+              <div className="mt-6 rounded-xl border bg-muted/40 p-4">
+                <p className="text-xs font-semibold">Geliştirme / demo hesabı</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Supabase yapılandırılmadığında yerel demo kullanıcıları kullanılabilir.
+                </p>
+                <div className="mt-3 space-y-1.5">
+                  {db.employees.filter((e) => e.active).slice(0, 4).map((employee) => (
+                    <button
+                      key={employee.id}
+                      type="button"
+                      onClick={() => setEmail(employee.email)}
+                      className="flex w-full items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left hover:bg-secondary"
+                    >
+                      <Avatar name={employee.name} color={employee.color} size="sm" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-medium">{employee.name}</span>
+                        <span className="block truncate text-[10px] text-muted-foreground">{ROLE_LABELS[employee.role]}</span>
+                      </span>
+                      <span className="text-[10px] text-primary">Seç</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-3 text-[10px] text-muted-foreground">Demo şifre: 123456</p>
+              </div>
+            )}
           </div>
         </main>
       </div>
