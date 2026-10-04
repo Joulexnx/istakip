@@ -54,7 +54,10 @@ async function readTable<T>(table: string): Promise<T[]> {
 }
 
 export async function loadSupabaseDB(): Promise<DB | null> {
-  const [companies, departments, employees, accounts, customers, projects, jobs, meetings, transactions, notifications, activities, settings] =
+  const { data: companyRows, error: companyError } = await supabase.rpc('get_my_company');
+  if (companyError) throw companyError;
+
+  const [departments, employees, accounts, customers, projects, jobs, meetings, transactions, notifications, activities, settings] =
     await Promise.all([
       readTable<Row>('departments'), readTable<Row>('employees'),
       readTable<Row>('user_accounts'), readTable<Row>('customers'), readTable<Row>('projects'),
