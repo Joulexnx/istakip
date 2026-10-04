@@ -130,7 +130,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(false);
   }, []);
 
-  const currentUser = db.employees.find((e) => e.id === currentUserId);
+  const currentAccount = db.userAccounts.find((a) => a.employeeId === currentUserId && a.companyId === db.company.id && a.active);
+  const currentUser = currentAccount ? db.employees.find((e) => e.id === currentUserId && e.active) : undefined;
   const currentRole: Role = currentUser?.role ?? 'calisan';
 
   useEffect(() => {
