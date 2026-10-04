@@ -17,6 +17,7 @@ import {
   BarChart3,
   AlertTriangle,
   Info,
+  LogOut,
 } from 'lucide-react';
 import { useApp } from '@/store/AppContext';
 import { cn } from '@/lib/utils';
@@ -187,8 +188,9 @@ function NotificationBell() {
 }
 
 function UserMenu() {
-  const { db, currentUserId, setCurrentUserId } = useApp();
+  const { db, currentUserId, logout } = useApp();
   const me = db.employees.find((e) => e.id === currentUserId);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -201,15 +203,15 @@ function UserMenu() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Rol / kullanıcı değiştir</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          <span className="block">{me?.name ?? 'Kullanıcı'}</span>
+          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{me?.email ?? ''}</span>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {db.employees.map((e) => (
-          <DropdownMenuItem key={e.id} onClick={() => setCurrentUserId(e.id)}>
-            <Avatar name={e.name} color={e.color} size="sm" />
-            <span className="ml-2 flex-1">{e.name}</span>
-            <span className="text-xs text-muted-foreground">{ROLE_LABELS[e.role]}</span>
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+          <LogOut className="mr-2 size-4" />
+          Çıkış Yap
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
