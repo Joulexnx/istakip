@@ -134,7 +134,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     void getCurrentSupabaseAccount()
-      .then((account) => {
+      .then(async (account) => {
         if (cancelled) return;
         if (!account) {
           localStorage.removeItem(AUTH_KEY);
