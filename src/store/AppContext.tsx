@@ -17,13 +17,14 @@ import type {
 } from '@/types/models';
 import { clearDB, exportDB, loadDB, resetDB, saveDB } from '@/services/storage';
 import { uid } from '@/lib/format';
+import { isBackendAuthEnabled, loginWithBackend, logoutFromBackend } from '@/services/auth';
 
 interface AppContextValue {
   db: DB;
   currentUserId: string;
   currentRole: Role;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => { ok: boolean; message?: string };
+  login: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
   setCurrentUserId: (id: string) => void;
   // yardımcılar
@@ -90,8 +91,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentUserIdState(id);
   }, []);
 
-  const login = useCallback((email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const normalized = email.trim().toLocaleLowerCase('tr-TR');
+
+    if (isBackendAuthEnabled) {
+      try {
+        const result = await loginWithBackend(normalized, password);
+        const user = db.employees.find((e) => e.id === result.userId && e.active);
+        if (!user) return { ok: false, message: 'Sunucu kullanıcıyı doğruladı ancak yerel kullanıcı kaydı bulunamadı.' };
+        localStorage.setItem(USER_KEY, user.id);
+        localStorage.setItem(AUTH_KEY, '1');
+        setCurrentUserIdState(user.id);
+        setIsAuthenticated(true);
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, message: error instanceof Error ? error.message : 'Sunucuya giriş yapılamadı.' };
+      }
+    }
+
     const user = db.employees.find((e) => e.email.toLocaleLowerCase('tr-TR') === normalized && e.active);
     if (!user) return { ok: false, message: 'Aktif kullanıcı bulunamadı.' };
     if (password !== DEMO_PASSWORD) return { ok: false, message: 'Şifre hatalı. Demo şifre: 123456' };
@@ -102,7 +119,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { ok: true };
   }, [db.employees]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await logoutFromBackend();
+    } catch {
+      // Yerel oturum yine de kapatılır.
+    }
     localStorage.removeItem(AUTH_KEY);
     localStorage.removeItem(USER_KEY);
     setIsAuthenticated(false);
