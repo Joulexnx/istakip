@@ -325,14 +325,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Toplantılar ----
   const addMeeting = useCallback((m: Omit<Meeting, 'id'>) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     const nm: Meeting = { ...m, id: uid('mt') };
     mutate((d) => pushActivity({ ...d, meetings: [...d.meetings, nm] }, `"${nm.title}" toplantısını oluşturdu.`));
     return nm;
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   const deleteMeeting = useCallback((id: string) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     mutate((d) => ({ ...d, meetings: d.meetings.filter((m) => m.id !== id) }));
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   // ---- Finans ----
   const addTransaction = useCallback((t: Omit<Transaction, 'id'>) => {
