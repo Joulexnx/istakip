@@ -17,7 +17,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function Projects() {
-  const { db, customer, addProject } = useApp();
+  const { db, customer, addProject, currentRole } = useApp();
+  const canManage = currentRole === 'yonetici' || currentRole === 'yardimci';
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', customerId: '', startDate: '', endDate: '', budget: '', note: '' });
   const [error, setError] = useState('');
@@ -45,11 +46,11 @@ export default function Projects() {
       <PageHeader
         title="Projeler"
         subtitle={`${db.projects.length} proje`}
-        actions={<Button onClick={() => setOpen(true)}><Plus className="mr-1.5 size-4" /> Yeni Proje</Button>}
+        actions={canManage ? <Button onClick={() => setOpen(true)}><Plus className="mr-1.5 size-4" /> Yeni Proje</Button> : undefined}
       />
 
       {db.projects.length === 0 ? (
-        <EmptyState title="Henüz proje bulunmuyor." hint="İlk projenizi oluşturun." action={<Button onClick={() => setOpen(true)}><Plus className="mr-1.5 size-4" /> Yeni Proje</Button>} />
+        <EmptyState title="Henüz proje bulunmuyor." hint="İlk projenizi oluşturun." action={canManage ? <Button onClick={() => setOpen(true)}><Plus className="mr-1.5 size-4" /> Yeni Proje</Button> : undefined} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {db.projects.map((p) => {
@@ -131,6 +132,7 @@ export function ProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { db, customer, employee, deleteProject, updateProject, currentRole } = useApp();
+  const canManage = currentRole === 'yonetici' || currentRole === 'yardimci';
   const [confirm, setConfirm] = useState(false);
   const p = db.projects.find((x) => x.id === id);
   if (!p) return <p className="py-20 text-center text-muted-foreground">Proje bulunamadı.</p>;
@@ -153,7 +155,7 @@ export function ProjectDetail() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={p.status} onValueChange={(v) => { updateProject(p.id, { status: v as ProjectStatus }); toast.success('Proje durumu güncellendi.'); }}>
+            <Select disabled={!canManage} value={p.status} onValueChange={(v) => { updateProject(p.id, { status: v as ProjectStatus }); toast.success('Proje durumu güncellendi.'); }}>
               <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {(Object.keys(PROJECT_STATUS_LABELS) as ProjectStatus[]).map((s) => (
