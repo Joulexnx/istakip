@@ -248,6 +248,11 @@ export function buildDemoDB(): DB {
   ];
 
   return {
+    company: { id: 'company_demo', name: 'ABC Teknoloji', slug: 'abc-teknoloji', active: true, createdAt: ago(120) },
+    userAccounts: employees.map((employee) => ({
+      id: `user_${employee.id}`, companyId: 'company_demo', employeeId: employee.id, email: employee.email,
+      role: employee.role, active: employee.active, lastLoginAt: null, createdAt: employee.startDate,
+    })),
     departments,
     employees,
     customers,
