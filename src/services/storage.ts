@@ -10,8 +10,10 @@ export function loadDB(): DB {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as DB;
-      if (parsed && Array.isArray(parsed.jobs)) return parsed;
+      const parsed = JSON.parse(raw) as Partial<DB>;
+      if (parsed && Array.isArray(parsed.jobs) && parsed.company && Array.isArray(parsed.userAccounts)) {
+        return parsed as DB;
+      }
     }
   } catch {
     // bozuk veri durumunda yeniden kur
