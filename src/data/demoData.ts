@@ -30,7 +30,7 @@ export function buildDemoDB(): DB {
   ];
 
   const employees = [
-    { id: 'emp_ahmet', name: 'Ahmet Yılmaz', phone: '0532 111 22 33', email: 'ahmet@abcteknoloji.com', departmentId: 'dep_yazilim', position: 'Kıdemli Yazılım Geliştirici', startDate: '2022-03-14', active: true, role: 'yonetici' as const, color: '#0d9488' },
+    { id: 'emp_ahmet', name: 'Alper', phone: '', email: 'alperoyanik@gmail.com', departmentId: 'dep_yazilim', position: 'Kıdemli Yazılım Geliştirici', startDate: '2022-03-14', active: true, role: 'yonetici' as const, color: '#0d9488' },
     { id: 'emp_mehmet', name: 'Mehmet Kaya', phone: '0533 444 55 66', email: 'mehmet@abcteknoloji.com', departmentId: 'dep_yazilim', position: 'Frontend Geliştirici', startDate: '2023-01-09', active: true, role: 'yardimci' as const, color: '#2563eb' },
     { id: 'emp_ayse', name: 'Ayşe Demir', phone: '0534 777 88 99', email: 'ayse@abcteknoloji.com', departmentId: 'dep_pazarlama', position: 'Grafik Tasarımcı', startDate: '2021-06-21', active: true, role: 'calisan' as const, color: '#db2777' },
     { id: 'emp_can', name: 'Can Öz', phone: '0535 123 45 67', email: 'can@abcteknoloji.com', departmentId: 'dep_teknik', position: 'Sistem Uzmanı', startDate: '2023-09-04', active: true, role: 'calisan' as const, color: '#d97706' },
