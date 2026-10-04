@@ -203,61 +203,255 @@ alter table public.activities enable row level security;
 alter table public.company_settings enable row level security;
 alter table public.system_admins enable row level security;
 
+create or replace function public.current_user_role()
+returns public.app_role
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select ua.role
+  from public.user_accounts ua
+  where ua.auth_user_id = (select auth.uid())
+    and ua.active = true
+  limit 1
+$$;
+
+revoke all on function public.current_user_role() from public;
+grant execute on function public.current_user_role() to authenticated;
+
 create policy companies_select_own on public.companies
   for select to authenticated
-  using (id = public.current_company_id());
+  using (id = (select public.current_company_id()));
 
-create policy employees_tenant on public.employees
-  for all to authenticated
-  using (company_id = public.current_company_id())
-  with check (company_id = public.current_company_id());
-
-create policy departments_tenant on public.departments
-  for all to authenticated
-  using (company_id = public.current_company_id())
-  with check (company_id = public.current_company_id());
-
-create policy user_accounts_tenant on public.user_accounts
+create policy employees_select_tenant on public.employees
   for select to authenticated
-  using (company_id = public.current_company_id());
+  using (company_id = (select public.current_company_id()));
 
-create policy customers_tenant on public.customers
-  for all to authenticated
-  using (company_id = public.current_company_id())
-  with check (company_id = public.current_company_id());
+create policy employees_insert_admin on public.employees
+  for insert to authenticated
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  );
 
-create policy projects_tenant on public.projects
-  for all to authenticated
-  using (company_id = public.current_company_id())
-  with check (company_id = public.current_company_id());
+create policy employees_update_admin on public.employees
+  for update to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  )
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  );
 
-create policy jobs_tenant on public.jobs
-  for all to authenticated
-  using (company_id = public.current_company_id())
-  with check (company_id = public.current_company_id());
+create policy employees_delete_admin on public.employees
+  for delete to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  );
 
-create policy meetings_tenant on public.meetings
-  for all to authenticated
-  using (company_id = public.current_company_id())
-  with check (company_id = public.current_company_id());
-
-create policy transactions_tenant on public.transactions
-  for all to authenticated
-  using (company_id = public.current_company_id())
-  with check (company_id = public.current_company_id());
-
-create policy notifications_tenant on public.notifications
-  for all to authenticated
-  using (company_id = public.current_company_id())
-  with check (company_id = public.current_company_id());
-
-create policy activities_tenant on public.activities
+create policy departments_select_tenant on public.departments
   for select to authenticated
-  using (company_id = public.current_company_id());
+  using (company_id = (select public.current_company_id()));
 
-create policy company_settings_tenant on public.company_settings
-  for all to authenticated
-  using (company_id = public.current_company_id())
-  with check (company_id = public.current_company_id());
+create policy departments_insert_admin on public.departments
+  for insert to authenticated
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  );
+
+create policy departments_update_admin on public.departments
+  for update to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  )
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  );
+
+create policy departments_delete_admin on public.departments
+  for delete to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  );
+
+create policy user_accounts_select_tenant on public.user_accounts
+  for select to authenticated
+  using (company_id = (select public.current_company_id()));
+
+create policy customers_select_tenant on public.customers
+  for select to authenticated
+  using (company_id = (select public.current_company_id()));
+
+create policy customers_insert_manager on public.customers
+  for insert to authenticated
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy customers_update_manager on public.customers
+  for update to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  )
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy customers_delete_manager on public.customers
+  for delete to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy projects_select_tenant on public.projects
+  for select to authenticated
+  using (company_id = (select public.current_company_id()));
+
+create policy projects_insert_manager on public.projects
+  for insert to authenticated
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy projects_update_manager on public.projects
+  for update to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  )
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy projects_delete_manager on public.projects
+  for delete to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy jobs_select_tenant on public.jobs
+  for select to authenticated
+  using (company_id = (select public.current_company_id()));
+
+create policy jobs_insert_manager on public.jobs
+  for insert to authenticated
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy jobs_update_manager on public.jobs
+  for update to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  )
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy jobs_delete_manager on public.jobs
+  for delete to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy meetings_select_tenant on public.meetings
+  for select to authenticated
+  using (company_id = (select public.current_company_id()));
+
+create policy meetings_insert_manager on public.meetings
+  for insert to authenticated
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy meetings_update_manager on public.meetings
+  for update to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  )
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy meetings_delete_manager on public.meetings
+  for delete to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy transactions_select_tenant on public.transactions
+  for select to authenticated
+  using (company_id = (select public.current_company_id()));
+
+create policy transactions_insert_manager on public.transactions
+  for insert to authenticated
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy transactions_update_manager on public.transactions
+  for update to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  )
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy transactions_delete_manager on public.transactions
+  for delete to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) in ('yonetici', 'yardimci')
+  );
+
+create policy notifications_select_tenant on public.notifications
+  for select to authenticated
+  using (company_id = (select public.current_company_id()));
+
+create policy activities_select_tenant on public.activities
+  for select to authenticated
+  using (company_id = (select public.current_company_id()));
+
+create policy company_settings_select_tenant on public.company_settings
+  for select to authenticated
+  using (company_id = (select public.current_company_id()));
+
+create policy company_settings_update_admin on public.company_settings
+  for update to authenticated
+  using (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  )
+  with check (
+    company_id = (select public.current_company_id())
+    and (select public.current_user_role()) = 'yonetici'
+  );
 
 revoke all on table public.system_admins from anon, authenticated;
