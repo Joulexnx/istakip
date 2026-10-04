@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router';
+import type { Role } from '@/types/models';
 import { Toaster } from 'sonner';
 import { AppProvider, useApp } from '@/store/AppContext';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -17,6 +18,11 @@ import Finance from '@/pages/Finance';
 import Reports from '@/pages/Reports';
 import Notifications from '@/pages/Notifications';
 import Settings from '@/pages/Settings';
+
+function RoleRoute({ roles, children }: { roles: readonly Role[]; children: ReactNode }) {
+  const { currentRole } = useApp();
+  return roles.includes(currentRole) ? <>{children}</> : <Navigate to="/" replace />;
+}
 
 function ProtectedRoutes() {
   const { isAuthenticated } = useApp();
@@ -55,10 +61,10 @@ function Shell() {
         <Route path="/musteriler" element={<Customers />} />
         <Route path="/musteriler/:id" element={<CustomerDetail />} />
         <Route path="/takvim" element={<CalendarPage />} />
-        <Route path="/finans" element={<Finance />} />
-        <Route path="/raporlar" element={<Reports />} />
+        <Route path="/finans" element={<RoleRoute roles={['yonetici', 'yardimci']}><Finance /></RoleRoute>} />
+        <Route path="/raporlar" element={<RoleRoute roles={['yonetici', 'yardimci']}><Reports /></RoleRoute>} />
         <Route path="/bildirimler" element={<Notifications />} />
-        <Route path="/ayarlar" element={<Settings />} />
+        <Route path="/ayarlar" element={<RoleRoute roles={['yonetici']}><Settings /></RoleRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <JobFormModal open={jobModal} onOpenChange={setJobModal} defaults={defaults} />
