@@ -112,6 +112,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const currentRole: Role = currentUser?.role ?? 'yonetici';
   const canManage = currentRole === 'yonetici' || currentRole === 'yardimci';
   const canAdmin = currentRole === 'yonetici';
+  const canAccessJob = useCallback(
+    (job?: Job) => Boolean(job && (canManage || (currentRole === 'calisan' && job.assigneeId === currentUserId))),
+    [canManage, currentRole, currentUserId]
+  );
 
   const employee = useCallback((id?: string | null) => db.employees.find((e) => e.id === id), [db.employees]);
   const customer = useCallback((id?: string | null) => db.customers.find((c) => c.id === id), [db.customers]);
@@ -156,9 +160,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateJob = useCallback(
     (id: string, patch: Partial<Job>) => {
+      const target = db.jobs.find((j) => j.id === id);
+      if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
       mutate((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)) }));
     },
-    [mutate]
+    [mutate, db.jobs, canAccessJob]
   );
 
   const deleteJob = useCallback(
@@ -176,6 +182,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setJobStatus = useCallback(
     (id: string, status: JobStatus) => {
+      const target = db.jobs.find((j) => j.id === id);
+      if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
       mutate((d) => {
         const job = d.jobs.find((j) => j.id === id);
         if (!job || job.status === status) return d;
@@ -189,11 +197,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return nd;
       });
     },
-    [mutate]
+    [mutate, db.jobs, canAccessJob]
   );
 
   const toggleSubtask = useCallback(
     (jobId: string, subId: string) => {
+      const target = db.jobs.find((j) => j.id === jobId);
+      if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
       mutate((d) => ({
         ...d,
         jobs: d.jobs.map((j) =>
@@ -203,11 +213,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ),
       }));
     },
-    [mutate]
+    [mutate, db.jobs, canAccessJob]
   );
 
   const addSubtask = useCallback(
     (jobId: string, title: string) => {
+      const target = db.jobs.find((j) => j.id === jobId);
+      if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
       mutate((d) => ({
         ...d,
         jobs: d.jobs.map((j) =>
@@ -215,11 +227,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ),
       }));
     },
-    [mutate]
+    [mutate, db.jobs, canAccessJob]
   );
 
   const addComment = useCallback(
     (jobId: string, text: string) => {
+      const target = db.jobs.find((j) => j.id === jobId);
+      if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
       mutate((d) => {
         const job = d.jobs.find((j) => j.id === jobId);
         const comment: JobComment = { id: uid('cm'), userId: currentUserId, text, createdAt: new Date().toISOString() };
@@ -229,11 +243,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return nd;
       });
     },
-    [mutate, currentUserId]
+    [mutate, currentUserId, db.jobs, canAccessJob]
   );
 
   const addFile = useCallback(
     (jobId: string, name: string) => {
+      const target = db.jobs.find((j) => j.id === jobId);
+      if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
       const ext = name.split('.').pop()?.toLowerCase() ?? '';
       const kind = (['pdf', 'jpg', 'png', 'docx', 'xlsx'] as const).includes(ext as never) ? (ext as 'pdf') : 'diger';
       mutate((d) => {
