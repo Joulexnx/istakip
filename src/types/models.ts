@@ -94,6 +94,7 @@ export interface Employee {
 }
 
 export interface Customer {
+  companyId: string;
   id: string;
   company: string;
   contact: string;
@@ -108,6 +109,7 @@ export interface Customer {
 }
 
 export interface Project {
+  companyId: string;
   id: string;
   name: string;
   customerId: string;
@@ -138,6 +140,7 @@ export interface JobFile {
 }
 
 export interface Job {
+  companyId: string;
   id: string;
   title: string;
   description: string;
@@ -161,6 +164,7 @@ export interface Job {
 }
 
 export interface Meeting {
+  companyId: string;
   id: string;
   title: string;
   date: string;
@@ -175,6 +179,7 @@ export interface Meeting {
 export type TransactionType = 'gelir' | 'gider';
 
 export interface Transaction {
+  companyId: string;
   id: string;
   type: TransactionType;
   description: string;
@@ -186,6 +191,7 @@ export interface Transaction {
 }
 
 export interface NotificationItem {
+  companyId: string;
   id: string;
   text: string;
   kind: 'info' | 'uyari';
@@ -195,6 +201,7 @@ export interface NotificationItem {
 }
 
 export interface ActivityItem {
+  companyId: string;
   id: string;
   userId: string;
   text: string;
