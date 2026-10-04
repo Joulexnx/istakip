@@ -247,6 +247,8 @@ export function buildDemoDB(): DB {
     { id: 'ac_5', userId: 'emp_elif', text: '"Teklif hazırlığı — Nova" işini oluşturdu.', createdAt: ago(2, 16) },
   ];
 
+  const withCompany = <T extends object>(items: T[]): (T & { companyId: string })[] => items.map((item) => ({ ...item, companyId }));
+
   return {
     company: { id: 'company_demo', name: 'ABC Teknoloji', slug: 'abc-teknoloji', active: true, createdAt: ago(120) },
     userAccounts: employees.map((employee) => ({
@@ -255,13 +257,13 @@ export function buildDemoDB(): DB {
     })),
     departments,
     employees,
-    customers,
-    projects,
-    jobs,
-    meetings,
-    transactions,
-    notifications,
-    activities,
+    customers: withCompany(customers),
+    projects: withCompany(projects),
+    jobs: withCompany(jobs),
+    meetings: withCompany(meetings),
+    transactions: withCompany(transactions),
+    notifications: withCompany(notifications),
+    activities: withCompany(activities),
     settings: {
       companyName: 'ABC Teknoloji',
       phone: '0212 900 00 00',
