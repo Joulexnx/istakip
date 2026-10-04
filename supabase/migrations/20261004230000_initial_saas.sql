@@ -177,8 +177,8 @@ returns uuid
 language sql
 stable
 security definer
-set search_path = public
-as $$
+set search_path = ''
+as $
   select ua.company_id
   from public.user_accounts ua
   where ua.auth_user_id = auth.uid()
