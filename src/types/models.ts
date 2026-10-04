@@ -55,6 +55,26 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   iptal: 'İptal',
 };
 
+
+export interface Company {
+  id: string;
+  name: string;
+  slug: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface UserAccount {
+  id: string;
+  companyId: string;
+  employeeId: string | null;
+  email: string;
+  role: Role;
+  active: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
 export interface Department {
   id: string;
   name: string;
@@ -191,6 +211,8 @@ export interface CompanySettings {
 }
 
 export interface DB {
+  company: Company;
+  userAccounts: UserAccount[];
   departments: Department[];
   employees: Employee[];
   customers: Customer[];
