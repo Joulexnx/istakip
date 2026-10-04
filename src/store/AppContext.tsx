@@ -148,7 +148,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       job.companyId === db.company.id &&
       (canManage || (currentRole === 'calisan' && job.assigneeId === currentUserId))
     ),
-    [canManage, currentRole, currentUserId]
+    [canManage, currentRole, currentUserId, db.company.id]
   );
 
   const employee = useCallback((id?: string | null) => db.employees.find((e) => e.id === id), [db.employees]);
@@ -202,7 +202,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       void _companyId;
       mutate((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id && j.companyId === d.company.id ? { ...j, ...safePatch, companyId: d.company.id } : j)) }));
     },
-    [mutate, canManage]
+    [mutate, canManage, db.jobs, db.company.id]
   );
 
   const deleteJob = useCallback(
@@ -306,7 +306,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ---- Projeler ----
-  const addProject = useCallback((p: Omit<Project, 'id'>) => {
+  const addProject = useCallback((p: Omit<Project, 'companyId' | 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     const np: Project = { ...p, companyId: db.company.id, id: uid('prj') };
     mutate((d) => pushActivity({ ...d, projects: [np, ...d.projects] }, `"${np.name}" projesini oluşturdu.`));
@@ -348,7 +348,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [mutate, canAdmin]);
 
   // ---- Müşteriler ----
-  const addCustomer = useCallback((c: Omit<Customer, 'id'>) => {
+  const addCustomer = useCallback((c: Omit<Customer, 'companyId' | 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     const nc: Customer = { ...c, companyId: db.company.id, id: uid('cus') };
     mutate((d) => pushActivity({ ...d, customers: [nc, ...d.customers] }, `"${nc.company}" müşterisini ekledi.`));
@@ -377,7 +377,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [mutate, canAdmin]);
 
   // ---- Toplantılar ----
-  const addMeeting = useCallback((m: Omit<Meeting, 'id'>) => {
+  const addMeeting = useCallback((m: Omit<Meeting, 'companyId' | 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     const nm: Meeting = { ...m, companyId: db.company.id, id: uid('mt') };
     mutate((d) => pushActivity({ ...d, meetings: [...d.meetings, nm] }, `"${nm.title}" toplantısını oluşturdu.`));
@@ -392,7 +392,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [mutate, canManage, db.meetings, db.company.id]);
 
   // ---- Finans ----
-  const addTransaction = useCallback((t: Omit<Transaction, 'id'>) => {
+  const addTransaction = useCallback((t: Omit<Transaction, 'companyId' | 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     mutate((d) => {
       const nt: Transaction = { ...t, companyId: db.company.id, id: uid('tr') };
