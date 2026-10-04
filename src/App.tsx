@@ -73,7 +73,7 @@ function Shell() {
       </Routes>
       <JobFormModal open={jobModal} onOpenChange={setJobModal} defaults={defaults} />
       {empty && (
-        <p className="sr-only">Veri yok — Ayarlar sayfasından demo verileri yükleyebilirsiniz.</p>
+        <p className="sr-only">Veri yok — Ayarlar sayfasından şirket verilerini yönetebilirsiniz.</p>
       )}
     </AppLayout>
   );
