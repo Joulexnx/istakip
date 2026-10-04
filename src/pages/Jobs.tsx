@@ -45,9 +45,11 @@ export default function Jobs({ onNewJob }: { onNewJob: (defaults?: object) => vo
         title={currentRole === 'calisan' ? 'Bana Atanan İşler' : 'İşler'}
         subtitle={`${jobs.length} iş listeleniyor`}
         actions={
-          <Button onClick={() => onNewJob()}>
-            <Plus className="mr-1.5 size-4" /> Yeni İş
-          </Button>
+          currentRole !== 'calisan' ? (
+            <Button onClick={() => onNewJob()}>
+              <Plus className="mr-1.5 size-4" /> Yeni İş
+            </Button>
+          ) : undefined
         }
       />
 
@@ -109,8 +111,8 @@ export default function Jobs({ onNewJob }: { onNewJob: (defaults?: object) => vo
       {jobs.length === 0 ? (
         <EmptyState
           title="Henüz iş bulunmuyor."
-          hint="Yeni bir iş oluşturarak başlayabilirsiniz."
-          action={<Button onClick={() => onNewJob()}><Plus className="mr-1.5 size-4" /> Yeni İş</Button>}
+          hint={currentRole === 'calisan' ? 'Size atanan işler burada görünecek.' : 'Yeni bir iş oluşturarak başlayabilirsiniz.'}
+          action={currentRole !== 'calisan' ? <Button onClick={() => onNewJob()}><Plus className="mr-1.5 size-4" /> Yeni İş</Button> : undefined}
         />
       ) : (
         <>
