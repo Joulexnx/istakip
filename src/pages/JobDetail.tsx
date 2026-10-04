@@ -43,6 +43,17 @@ export default function JobDetail() {
   const progress = job.subtasks.length ? Math.round((doneCount / job.subtasks.length) * 100) : 0;
   const overdue = isOverdue(job.dueDate, job.status);
   const canDelete = currentRole === 'yonetici';
+  const canAccessJob = currentRole !== 'calisan' || job.assigneeId === currentUserId;
+
+  if (!canAccessJob) {
+    return (
+      <div className="mx-auto max-w-xl py-20 text-center">
+        <p className="text-lg font-semibold">Bu işe erişim yetkiniz yok.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Çalışan hesabıyla yalnızca size atanan işler görüntülenebilir.</p>
+        <Button variant="outline" className="mt-4" onClick={() => navigate('/isler')}>İşlerime dön</Button>
+      </div>
+    );
+  }
 
   const submitComment = () => {
     if (!comment.trim()) return;
