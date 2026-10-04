@@ -320,7 +320,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { companyId: _companyId, ...safePatch } = patch;
     void _companyId;
     mutate((d) => ({ ...d, projects: d.projects.map((p) => (p.id === id && p.companyId === d.company.id ? { ...p, ...safePatch, companyId: d.company.id } : p)) }));
-  }, [mutate, canManage]);
+  }, [mutate, canManage, db.projects, db.company.id]);
 
   const deleteProject = useCallback((id: string) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
@@ -362,7 +362,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { companyId: _companyId, ...safePatch } = patch;
     void _companyId;
     mutate((d) => ({ ...d, customers: d.customers.map((c) => (c.id === id && c.companyId === d.company.id ? { ...c, ...safePatch, companyId: d.company.id } : c)) }));
-  }, [mutate, canManage]);
+  }, [mutate, canManage, db.customers, db.company.id]);
 
   const deleteCustomer = useCallback((id: string) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
@@ -401,7 +401,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         `${t.type === 'gelir' ? 'Gelir' : 'Gider'} kaydı ekledi: ${t.description}`
       );
     });
-  }, [mutate, canManage]);
+  }, [mutate, canManage, db.company.id]);
 
   const deleteTransaction = useCallback((id: string) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
