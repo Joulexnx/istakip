@@ -37,6 +37,8 @@ export function resetDB(): DB {
 
 export function clearDB(): DB {
   const empty: DB = {
+    company: { id: 'company_empty', name: '', slug: '', active: true, createdAt: new Date().toISOString() },
+    userAccounts: [],
     departments: [],
     employees: [],
     customers: [],
