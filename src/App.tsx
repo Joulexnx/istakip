@@ -25,8 +25,12 @@ function RoleRoute({ roles, children }: { roles: readonly Role[]; children: Reac
 }
 
 function ProtectedRoutes() {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, authReady } = useApp();
   const location = useLocation();
+
+  if (!authReady) {
+    return <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">Oturum doğrulanıyor...</div>;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/giris" replace state={{ from: location.pathname }} />;
@@ -76,7 +80,11 @@ function Shell() {
 }
 
 function AppRoutes() {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, authReady } = useApp();
+
+  if (!authReady) {
+    return <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">Oturum doğrulanıyor...</div>;
+  }
 
   return (
     <Routes>
