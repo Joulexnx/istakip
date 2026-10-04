@@ -267,13 +267,15 @@ export function AppLayout({ children, onNewJob }: { children: React.ReactNode; o
             <GlobalSearch />
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={onNewJob}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
-            >
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">Yeni İş</span>
-            </button>
+            {currentRole !== 'calisan' && (
+              <button
+                onClick={onNewJob}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
+              >
+                <Plus className="size-4" />
+                <span className="hidden sm:inline">Yeni İş</span>
+              </button>
+            )}
             <NotificationBell />
             <div className="lg:hidden">
               <UserMenu />
@@ -294,7 +296,7 @@ export function AppLayout({ children, onNewJob }: { children: React.ReactNode; o
           ]
             .map((item, i) => {
               if (!item)
-                return (
+                return currentRole !== 'calisan' ? (
                   <button
                     key="new"
                     onClick={onNewJob}
@@ -303,7 +305,7 @@ export function AppLayout({ children, onNewJob }: { children: React.ReactNode; o
                   >
                     <Plus className="size-5" />
                   </button>
-                );
+                ) : <span key="new" className="w-14" />;
               if (item.roles && !(item.roles as string[]).includes(currentRole))
                 return <span key={i} className="w-14" />;
               const Icon = item.icon;
