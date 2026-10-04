@@ -32,7 +32,7 @@ interface AppContextValue {
   customer: (id: string | null | undefined) => Customer | undefined;
   project: (id: string | null | undefined) => Project | undefined;
   // işler
-  addJob: (job: Omit<Job, 'id' | 'createdAt' | 'completedAt' | 'comments' | 'files' | 'subtasks'> & { subtasks?: SubTask[] }) => Job;
+  addJob: (job: Omit<Job, 'companyId' | 'id' | 'createdAt' | 'completedAt' | 'comments' | 'files' | 'subtasks'> & { subtasks?: SubTask[] }) => Job;
   updateJob: (id: string, patch: Partial<Job>) => void;
   deleteJob: (id: string) => void;
   setJobStatus: (id: string, status: JobStatus) => void;
@@ -41,21 +41,21 @@ interface AppContextValue {
   addComment: (jobId: string, text: string) => void;
   addFile: (jobId: string, name: string) => void;
   // projeler / çalışanlar / müşteriler
-  addProject: (p: Omit<Project, 'id'>) => Project;
+  addProject: (p: Omit<Project, 'companyId' | 'id'>) => Project;
   updateProject: (id: string, patch: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   addEmployee: (e: Omit<Employee, 'id'>) => Employee;
   updateEmployee: (id: string, patch: Partial<Employee>) => void;
   deleteEmployee: (id: string) => void;
-  addCustomer: (c: Omit<Customer, 'id'>) => Customer;
+  addCustomer: (c: Omit<Customer, 'companyId' | 'id'>) => Customer;
   updateCustomer: (id: string, patch: Partial<Customer>) => void;
   deleteCustomer: (id: string) => void;
   addDepartment: (name: string) => void;
   // toplantılar
-  addMeeting: (m: Omit<Meeting, 'id'>) => Meeting;
+  addMeeting: (m: Omit<Meeting, 'companyId' | 'id'>) => Meeting;
   deleteMeeting: (id: string) => void;
   // finans
-  addTransaction: (t: Omit<Transaction, 'id'>) => void;
+  addTransaction: (t: Omit<Transaction, 'companyId' | 'id'>) => void;
   deleteTransaction: (id: string) => void;
   // bildirim & aktivite
   markNotificationRead: (id: string) => void;
@@ -143,23 +143,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const canManage = currentRole === 'yonetici' || currentRole === 'yardimci';
   const canAdmin = currentRole === 'yonetici';
   const canAccessJob = useCallback(
-    (job?: Job) => Boolean(job && (canManage || (currentRole === 'calisan' && job.assigneeId === currentUserId))),
+    (job?: Job) => Boolean(
+      job &&
+      job.companyId === db.company.id &&
+      (canManage || (currentRole === 'calisan' && job.assigneeId === currentUserId))
+    ),
     [canManage, currentRole, currentUserId]
   );
 
   const employee = useCallback((id?: string | null) => db.employees.find((e) => e.id === id), [db.employees]);
-  const customer = useCallback((id?: string | null) => db.customers.find((c) => c.id === id), [db.customers]);
-  const project = useCallback((id?: string | null) => db.projects.find((p) => p.id === id), [db.projects]);
+  const customer = useCallback((id?: string | null) => db.customers.find((c) => c.id === id && c.companyId === db.company.id), [db.customers, db.company.id]);
+  const project = useCallback((id?: string | null) => db.projects.find((p) => p.id === id && p.companyId === db.company.id), [db.projects, db.company.id]);
 
   const mutate = useCallback((fn: (d: DB) => DB) => setDb((prev) => fn(prev)), []);
 
   const pushActivity = (d: DB, text: string): DB => {
-    const item: ActivityItem = { id: uid('ac'), userId: currentUserId, text, createdAt: new Date().toISOString() };
+    const item: ActivityItem = { id: uid('ac'), companyId: d.company.id, userId: currentUserId, text, createdAt: new Date().toISOString() };
     return { ...d, activities: [item, ...d.activities].slice(0, 200) };
   };
 
   const pushNotification = (d: DB, text: string, kind: NotificationItem['kind'] = 'info', jobId?: string): DB => {
-    const item: NotificationItem = { id: uid('nt'), text, kind, createdAt: new Date().toISOString(), read: false, jobId };
+    const item: NotificationItem = { id: uid('nt'), companyId: d.company.id, text, kind, createdAt: new Date().toISOString(), read: false, jobId };
     return { ...d, notifications: [item, ...d.notifications].slice(0, 100) };
   };
 
@@ -168,6 +172,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (input) => {
       if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
       const job: Job = {
+        companyId: db.company.id,
         subtasks: [],
         ...input,
         id: uid('job'),
@@ -191,7 +196,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateJob = useCallback(
     (id: string, patch: Partial<Job>) => {
       if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
-      mutate((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)) }));
+      const target = db.jobs.find((j) => j.id === id);
+      if (!target || target.companyId !== db.company.id) throw new Error('Bu işe erişim yetkiniz yok.');
+      const { companyId: _companyId, ...safePatch } = patch;
+      void _companyId;
+      mutate((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id && j.companyId === d.company.id ? { ...j, ...safePatch, companyId: d.company.id } : j)) }));
     },
     [mutate, canManage]
   );
@@ -297,14 +306,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ---- Projeler ----
   const addProject = useCallback((p: Omit<Project, 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
-    const np: Project = { ...p, id: uid('prj') };
+    const np: Project = { ...p, companyId: db.company.id, id: uid('prj') };
     mutate((d) => pushActivity({ ...d, projects: [np, ...d.projects] }, `"${np.name}" projesini oluşturdu.`));
     return np;
   }, [mutate, canManage]);
 
   const updateProject = useCallback((id: string, patch: Partial<Project>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
-    mutate((d) => ({ ...d, projects: d.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
+    const target = db.projects.find((p) => p.id === id);
+    if (!target || target.companyId !== db.company.id) throw new Error('Bu projeye erişim yetkiniz yok.');
+    const { companyId: _companyId, ...safePatch } = patch;
+    void _companyId;
+    mutate((d) => ({ ...d, projects: d.projects.map((p) => (p.id === id && p.companyId === d.company.id ? { ...p, ...safePatch, companyId: d.company.id } : p)) }));
   }, [mutate, canManage]);
 
   const deleteProject = useCallback((id: string) => {
@@ -333,14 +346,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ---- Müşteriler ----
   const addCustomer = useCallback((c: Omit<Customer, 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
-    const nc: Customer = { ...c, id: uid('cus') };
+    const nc: Customer = { ...c, companyId: db.company.id, id: uid('cus') };
     mutate((d) => pushActivity({ ...d, customers: [nc, ...d.customers] }, `"${nc.company}" müşterisini ekledi.`));
     return nc;
   }, [mutate, canManage]);
 
   const updateCustomer = useCallback((id: string, patch: Partial<Customer>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
-    mutate((d) => ({ ...d, customers: d.customers.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+    const target = db.customers.find((c) => c.id === id);
+    if (!target || target.companyId !== db.company.id) throw new Error('Bu müşteriye erişim yetkiniz yok.');
+    const { companyId: _companyId, ...safePatch } = patch;
+    void _companyId;
+    mutate((d) => ({ ...d, customers: d.customers.map((c) => (c.id === id && c.companyId === d.company.id ? { ...c, ...safePatch, companyId: d.company.id } : c)) }));
   }, [mutate, canManage]);
 
   const deleteCustomer = useCallback((id: string) => {
@@ -356,7 +373,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ---- Toplantılar ----
   const addMeeting = useCallback((m: Omit<Meeting, 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
-    const nm: Meeting = { ...m, id: uid('mt') };
+    const nm: Meeting = { ...m, companyId: db.company.id, id: uid('mt') };
     mutate((d) => pushActivity({ ...d, meetings: [...d.meetings, nm] }, `"${nm.title}" toplantısını oluşturdu.`));
     return nm;
   }, [mutate, canManage]);
@@ -370,7 +387,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTransaction = useCallback((t: Omit<Transaction, 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     mutate((d) => {
-      const nt: Transaction = { ...t, id: uid('tr') };
+      const nt: Transaction = { ...t, companyId: db.company.id, id: uid('tr') };
       return pushActivity(
         { ...d, transactions: [nt, ...d.transactions] },
         `${t.type === 'gelir' ? 'Gelir' : 'Gider'} kaydı ekledi: ${t.description}`
