@@ -262,7 +262,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return nd;
       });
     },
-    [mutate]
+    [mutate, db.jobs, canAccessJob]
   );
 
   // ---- Projeler ----
