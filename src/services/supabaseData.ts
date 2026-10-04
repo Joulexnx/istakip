@@ -56,13 +56,13 @@ async function readTable<T>(table: string): Promise<T[]> {
 export async function loadSupabaseDB(): Promise<DB | null> {
   const [companies, departments, employees, accounts, customers, projects, jobs, meetings, transactions, notifications, activities, settings] =
     await Promise.all([
-      readTable<Row>('companies'), readTable<Row>('departments'), readTable<Row>('employees'),
+      readTable<Row>('departments'), readTable<Row>('employees'),
       readTable<Row>('user_accounts'), readTable<Row>('customers'), readTable<Row>('projects'),
       readTable<Row>('jobs'), readTable<Row>('meetings'), readTable<Row>('transactions'),
       readTable<Row>('notifications'), readTable<Row>('activities'), readTable<Row>('company_settings'),
     ]);
 
-  const company = companies[0];
+  const company = companyRows?.[0];
   if (!company) return null;
 
   const userAccounts: UserAccount[] = accounts.map((r) => ({
