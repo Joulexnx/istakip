@@ -109,7 +109,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const currentUser = db.employees.find((e) => e.id === currentUserId);
-  const currentRole: Role = currentUser?.role ?? 'yonetici';
+  const currentRole: Role = currentUser?.role ?? 'calisan';
+
+  useEffect(() => {
+    if (isAuthenticated && (!currentUser || !currentUser.active)) {
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(USER_KEY);
+      setIsAuthenticated(false);
+    }
+  }, [isAuthenticated, currentUser]);
   const canManage = currentRole === 'yonetici' || currentRole === 'yardimci';
   const canAdmin = currentRole === 'yonetici';
   const canAccessJob = useCallback(
