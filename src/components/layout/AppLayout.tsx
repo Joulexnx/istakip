@@ -51,7 +51,7 @@ export const NAV_ITEMS = [
 ] as const;
 
 function GlobalSearch() {
-  const { db } = useApp();
+  const { db, currentRole, currentUserId } = useApp();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -60,12 +60,15 @@ function GlobalSearch() {
     const t = q.trim().toLocaleLowerCase('tr');
     if (t.length < 2) return null;
     return {
-      jobs: db.jobs.filter((j) => j.title.toLocaleLowerCase('tr').includes(t)).slice(0, 4),
+      jobs: db.jobs
+        .filter((j) => currentRole !== 'calisan' || j.assigneeId === currentUserId)
+        .filter((j) => j.title.toLocaleLowerCase('tr').includes(t))
+        .slice(0, 4),
       customers: db.customers.filter((c) => c.company.toLocaleLowerCase('tr').includes(t)).slice(0, 3),
       employees: db.employees.filter((e) => e.name.toLocaleLowerCase('tr').includes(t)).slice(0, 3),
       projects: db.projects.filter((p) => p.name.toLocaleLowerCase('tr').includes(t)).slice(0, 3),
     };
-  }, [q, db]);
+  }, [q, db, currentRole, currentUserId]);
 
   const go = (path: string) => {
     setQ('');
