@@ -16,6 +16,8 @@ const ago = (days: number, hour = 10): string => {
 };
 
 export function buildDemoDB(): DB {
+  const companyId = 'company_demo';
+
   const departments = [
     { id: 'dep_yonetim', name: 'Yönetim' },
     { id: 'dep_satis', name: 'Satış' },
@@ -72,6 +74,7 @@ export function buildDemoDB(): DB {
     createdAt: ago(5),
     completedAt: null,
     ...j,
+    companyId,
   });
 
   const jobs: Job[] = [
@@ -250,9 +253,9 @@ export function buildDemoDB(): DB {
   const withCompany = <T extends object>(items: T[]): (T & { companyId: string })[] => items.map((item) => ({ ...item, companyId }));
 
   return {
-    company: { id: 'company_demo', name: 'ABC Teknoloji', slug: 'abc-teknoloji', active: true, createdAt: ago(120) },
+    company: { id: companyId, name: 'ABC Teknoloji', slug: 'abc-teknoloji', active: true, createdAt: ago(120) },
     userAccounts: employees.map((employee) => ({
-      id: `user_${employee.id}`, companyId: 'company_demo', employeeId: employee.id, email: employee.email,
+      id: `user_${employee.id}`, companyId, employeeId: employee.id, email: employee.email,
       role: employee.role, active: employee.active, lastLoginAt: null, createdAt: employee.startDate,
     })),
     departments,
