@@ -160,11 +160,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateJob = useCallback(
     (id: string, patch: Partial<Job>) => {
-      const target = db.jobs.find((j) => j.id === id);
-      if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
+      if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
       mutate((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)) }));
     },
-    [mutate, db.jobs, canAccessJob]
+    [mutate, canManage]
   );
 
   const deleteJob = useCallback(
