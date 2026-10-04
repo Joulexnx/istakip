@@ -15,7 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function Customers() {
-  const { db, addCustomer } = useApp();
+  const { db, addCustomer, currentRole } = useApp();
+  const canManage = currentRole === 'yonetici' || currentRole === 'yardimci';
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ company: '', contact: '', phone: '', email: '', address: '', taxOffice: '', taxNo: '', note: '', tags: '' });
   const [error, setError] = useState('');
@@ -45,7 +46,7 @@ export default function Customers() {
       <PageHeader
         title="Müşteriler"
         subtitle={`${db.customers.filter((c) => c.status === 'aktif').length} aktif müşteri`}
-        actions={<Button onClick={() => setOpen(true)}><Plus className="mr-1.5 size-4" /> Müşteri Ekle</Button>}
+        actions={canManage ? <Button onClick={() => setOpen(true)}><Plus className="mr-1.5 size-4" /> Müşteri Ekle</Button> : undefined}
       />
 
       {db.customers.length === 0 ? (
@@ -106,6 +107,7 @@ export function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { db, deleteCustomer, updateCustomer, currentRole } = useApp();
+  const canManage = currentRole === 'yonetici' || currentRole === 'yardimci';
   const [confirm, setConfirm] = useState(false);
   const c = db.customers.find((x) => x.id === id);
   if (!c) return <p className="py-20 text-center text-muted-foreground">Müşteri bulunamadı.</p>;
@@ -125,7 +127,7 @@ export function CustomerDetail() {
             <p className="mt-1 text-sm text-muted-foreground">{c.contact}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={c.status} onValueChange={(v) => updateCustomer(c.id, { status: v as 'aktif' | 'pasif' })}>
+            <Select disabled={!canManage} value={c.status} onValueChange={(v) => updateCustomer(c.id, { status: v as 'aktif' | 'pasif' })}>
               <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="aktif">Aktif</SelectItem>
