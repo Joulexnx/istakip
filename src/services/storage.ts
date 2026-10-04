@@ -11,8 +11,21 @@ export function loadDB(): DB {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<DB>;
-      if (parsed && Array.isArray(parsed.jobs) && parsed.company && Array.isArray(parsed.userAccounts)) {
-        return parsed as DB;
+      if (parsed && parsed.company && Array.isArray(parsed.userAccounts) && Array.isArray(parsed.jobs)) {
+        const companyId = parsed.company.id;
+        const withTenant = <T extends { companyId?: string }>(items: T[] | undefined): T[] =>
+          (items ?? []).map((item) => ({ ...item, companyId }));
+        const migrated = {
+          ...parsed,
+          customers: withTenant(parsed.customers),
+          projects: withTenant(parsed.projects),
+          jobs: withTenant(parsed.jobs),
+          meetings: withTenant(parsed.meetings),
+          transactions: withTenant(parsed.transactions),
+          notifications: withTenant(parsed.notifications),
+          activities: withTenant(parsed.activities),
+        } as DB;
+        return migrated;
       }
     }
   } catch {
