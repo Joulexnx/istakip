@@ -41,11 +41,16 @@ const PIE_COLORS: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const { db, employee, customer } = useApp();
+  const { db, employee, customer, currentRole, currentUserId } = useApp();
   const navigate = useNavigate();
 
+  const visibleJobs = useMemo(
+    () => (currentRole === 'calisan' ? db.jobs.filter((j) => j.assigneeId === currentUserId) : db.jobs),
+    [db.jobs, currentRole, currentUserId]
+  );
+
   const stats = useMemo(() => {
-    const jobs = db.jobs;
+    const jobs = visibleJobs;
     return {
       total: jobs.length,
       active: jobs.filter((j) => ['yeni', 'planlandi', 'devam', 'beklemede', 'kontrolde'].includes(j.status)).length,
@@ -54,37 +59,37 @@ export default function Dashboard() {
       done: jobs.filter((j) => j.status === 'tamamlandi').length,
       projects: db.projects.filter((p) => p.status === 'devam').length,
     };
-  }, [db]);
+  }, [visibleJobs, db.projects]);
 
   const todayJobs = useMemo(
     () =>
-      db.jobs
+      visibleJobs
         .filter((j) => isDueToday(j.dueDate) && j.status !== 'tamamlandi' && j.status !== 'iptal')
         .sort((a, b) => a.time.localeCompare(b.time)),
-    [db.jobs]
+    [visibleJobs]
   );
 
   const overdueHigh = useMemo(
-    () => db.jobs.filter((j) => isOverdue(j.dueDate, j.status) && j.priority === 'yuksek'),
-    [db.jobs]
+    () => visibleJobs.filter((j) => isOverdue(j.dueDate, j.status) && j.priority === 'yuksek'),
+    [visibleJobs]
   );
 
   const statusChart = useMemo(() => {
     const counts: Record<string, number> = {};
-    db.jobs.forEach((j) => {
+    visibleJobs.forEach((j) => {
       counts[j.status] = (counts[j.status] ?? 0) + 1;
     });
     return Object.entries(counts).map(([k, v]) => ({ name: JOB_STATUS_LABELS[k as keyof typeof JOB_STATUS_LABELS], value: v, key: k }));
-  }, [db.jobs]);
+  }, [visibleJobs]);
 
   const monthlyJobs = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
       const m = subMonths(new Date(), 5 - i);
       const key = format(m, 'yyyy-MM');
-      const count = db.jobs.filter((j) => j.createdAt.slice(0, 7) === key).length;
+      const count = visibleJobs.filter((j) => j.createdAt.slice(0, 7) === key).length;
       return { name: format(m, 'LLL', { locale: tr }), count };
     });
-  }, [db.jobs]);
+  }, [visibleJobs]);
 
   const monthlyFinance = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
@@ -97,19 +102,28 @@ export default function Dashboard() {
   }, [db.transactions]);
 
   const perf = useMemo(() => {
+    if (currentRole === 'calisan') {
+      const me = db.employees.find((e) => e.id === currentUserId);
+      return me
+        ? [{
+            name: me.name.split(' ')[0],
+            Tamamlanan: visibleJobs.filter((j) => j.status === 'tamamlandi').length,
+          }]
+        : [];
+    }
     return db.employees
       .filter((e) => e.active)
       .map((e) => ({
         name: e.name.split(' ')[0],
         Tamamlanan: db.jobs.filter((j) => j.assigneeId === e.id && j.status === 'tamamlandi').length,
       }));
-  }, [db]);
+  }, [db.employees, currentRole, currentUserId, visibleJobs]);
 
   return (
     <div>
       <PageHeader
         title="Dashboard"
-        subtitle={`${db.settings.companyName} — genel durum, ${format(new Date(), 'd MMMM yyyy, EEEE', { locale: tr })}`}
+        subtitle={`${db.settings.companyName} — ${currentRole === 'calisan' ? 'size atanan işlerin durumu' : 'genel durum'}, ${format(new Date(), 'd MMMM yyyy, EEEE', { locale: tr })}`}
       />
 
       {/* Genel durum */}
@@ -215,7 +229,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-4">
+        {currentRole !== 'calisan' && (
+          <div className="rounded-xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">Gelir / Gider (Aylık)</h3>
           <div className="h-56">
             <ResponsiveContainer>
@@ -230,10 +245,11 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+          </div>
+        )}
 
         <div className="rounded-xl border bg-card p-4">
-          <h3 className="mb-2 text-sm font-semibold">Çalışan Performansı (tamamlanan iş)</h3>
+          <h3 className="mb-2 text-sm font-semibold">{currentRole === 'calisan' ? 'Benim Performansım' : 'Çalışan Performansı (tamamlanan iş)'}</h3>
           <div className="h-56">
             <ResponsiveContainer>
               <BarChart data={perf} layout="vertical">
