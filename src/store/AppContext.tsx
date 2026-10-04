@@ -82,13 +82,13 @@ const DEMO_PASSWORD = '123456';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(() => loadDB());
-  const [currentUserId, setCurrentUserIdState] = useState<string>(() => localStorage.getItem(USER_KEY) || 'emp_ahmet');
+  const [currentUserId, setCurrentUserIdState] = useState<string>(() => isSupabaseAuthEnabled ? '' : (localStorage.getItem(USER_KEY) || 'emp_ahmet'));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
     isSupabaseAuthEnabled ? false : localStorage.getItem(AUTH_KEY) === '1'
   );
   const [authReady, setAuthReady] = useState<boolean>(() => !isSupabaseAuthEnabled);
 
-  useEffect(() => saveDB(db), [db]);
+  useEffect(() => {\n    if (!isSupabaseAuthEnabled) saveDB(db);\n  }, [db]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', db.settings.theme === 'dark');
@@ -112,24 +112,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         return true;
       }
-    } catch {
-      // Supabase veri yükleme başarısızsa mevcut yerel veriyle oturum açılır.
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Supabase şirket verileri yüklenemedi.');
+      return false;
     }
 
-    const normalized = account.email.toLocaleLowerCase('tr-TR');
-    const localUser =
-      db.employees.find((employee) => employee.email.toLocaleLowerCase('tr-TR') === normalized && employee.active) ??
-      db.employees.find((employee) => employee.active && employee.role === account.role);
-
-    if (!localUser) return false;
-
-    localStorage.setItem(USER_KEY, localUser.id);
-    localStorage.setItem(AUTH_KEY, '1');
-    setCurrentUserIdState(localUser.id);
-    setIsAuthenticated(true);
-    return true;
-  }, [db.employees]);
-
+    toast.error('Supabase şirket hesabı verileri yüklenemedi. Yerel veriler kullanılmayacak.');
+    return false;
+  }, []);
+  
   useEffect(() => {
     if (!isSupabaseAuthEnabled) return;
 
