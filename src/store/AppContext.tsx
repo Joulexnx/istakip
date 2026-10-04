@@ -106,21 +106,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const remoteDb = await loadSupabaseDB();
-      if (remoteDb && account.employeeId) {
-        setDb(remoteDb);
-        setCurrentUserIdState(account.employeeId);
-        localStorage.setItem(USER_KEY, account.employeeId);
-        localStorage.setItem(AUTH_KEY, '1');
-        setIsAuthenticated(true);
-        return true;
+      if (!account.employeeId) {
+        toast.error('Supabase hesabı bir çalışan kaydına bağlı değil.');
+        return false;
       }
+      if (!remoteDb) {
+        toast.error('Supabase şirket verileri bulunamadı veya erişilemedi.');
+        return false;
+      }
+
+      setDb(remoteDb);
+      setCurrentUserIdState(account.employeeId);
+      localStorage.setItem(USER_KEY, account.employeeId);
+      localStorage.setItem(AUTH_KEY, '1');
+      setIsAuthenticated(true);
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Supabase şirket verileri yüklenemedi.');
       return false;
     }
-
-    toast.error('Supabase şirket hesabı verileri yüklenemedi. Yerel veriler kullanılmayacak.');
-    return false;
   }, []);
   
   useEffect(() => {
