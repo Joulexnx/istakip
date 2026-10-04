@@ -18,12 +18,14 @@ import type {
 import { clearDB, exportDB, loadDB, resetDB, saveDB } from '@/services/storage';
 import { uid } from '@/lib/format';
 import { isBackendAuthEnabled, loginWithBackend, logoutFromBackend } from '@/services/auth';
+import { getCurrentSupabaseAccount, isSupabaseAuthEnabled, loginWithSupabase, logoutFromSupabase } from '@/services/supabaseAuth';
 
 interface AppContextValue {
   db: DB;
   currentUserId: string;
   currentRole: Role;
   isAuthenticated: boolean;
+  authReady: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
   setCurrentUserId: (id: string) => void;
@@ -78,7 +80,10 @@ const DEMO_PASSWORD = '123456';
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(() => loadDB());
   const [currentUserId, setCurrentUserIdState] = useState<string>(() => localStorage.getItem(USER_KEY) || 'emp_ahmet');
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => localStorage.getItem(AUTH_KEY) === '1');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
+    isSupabaseAuthEnabled ? false : localStorage.getItem(AUTH_KEY) === '1'
+  );
+  const [authReady, setAuthReady] = useState<boolean>(() => !isSupabaseAuthEnabled);
 
   useEffect(() => saveDB(db), [db]);
 
@@ -91,8 +96,76 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentUserIdState(id);
   }, []);
 
+  const applySupabaseAccount = useCallback((account: Awaited<ReturnType<typeof getCurrentSupabaseAccount>>) => {
+    if (!account || !account.active) return false;
+
+    const normalized = account.email.toLocaleLowerCase('tr-TR');
+    const localUser =
+      db.employees.find((employee) => employee.email.toLocaleLowerCase('tr-TR') === normalized && employee.active) ??
+      db.employees.find((employee) => employee.active && employee.role === account.role);
+
+    if (!localUser) return false;
+
+    localStorage.setItem(USER_KEY, localUser.id);
+    localStorage.setItem(AUTH_KEY, '1');
+    setCurrentUserIdState(localUser.id);
+    setIsAuthenticated(true);
+    return true;
+  }, [db.employees]);
+
+  useEffect(() => {
+    if (!isSupabaseAuthEnabled) return;
+
+    let cancelled = false;
+
+    void getCurrentSupabaseAccount()
+      .then((account) => {
+        if (cancelled) return;
+        if (!account) {
+          localStorage.removeItem(AUTH_KEY);
+          localStorage.removeItem(USER_KEY);
+          setIsAuthenticated(false);
+          return;
+        }
+
+        const applied = applySupabaseAccount(account);
+        if (!applied) {
+          localStorage.removeItem(AUTH_KEY);
+          localStorage.removeItem(USER_KEY);
+          setIsAuthenticated(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          localStorage.removeItem(AUTH_KEY);
+          localStorage.removeItem(USER_KEY);
+          setIsAuthenticated(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAuthReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applySupabaseAccount]);
+
   const login = useCallback(async (email: string, password: string) => {
     const normalized = email.trim().toLocaleLowerCase('tr-TR');
+
+    if (isSupabaseAuthEnabled) {
+      try {
+        const account = await loginWithSupabase(normalized, password);
+        if (!applySupabaseAccount(account)) {
+          await logoutFromSupabase().catch(() => undefined);
+          return { ok: false, message: 'Supabase hesabı uygulamadaki aktif kullanıcıyla eşleştirilemedi.' };
+        }
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, message: error instanceof Error ? error.message : 'Supabase ile giriş yapılamadı.' };
+      }
+    }
 
     if (isBackendAuthEnabled) {
       try {
@@ -117,11 +190,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentUserIdState(user.id);
     setIsAuthenticated(true);
     return { ok: true };
-  }, [db.employees]);
+  }, [db.employees, applySupabaseAccount]);
 
   const logout = useCallback(async () => {
     try {
-      await logoutFromBackend();
+      if (isSupabaseAuthEnabled) {
+        await logoutFromSupabase();
+      } else {
+        await logoutFromBackend();
+      }
     } catch {
       // Yerel oturum yine de kapatılır.
     }
@@ -450,6 +527,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       currentUserId,
       currentRole,
       isAuthenticated,
+      authReady,
       login,
       logout,
       setCurrentUserId,
@@ -488,7 +566,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       exportData,
     }),
     [
-      db, currentUserId, currentRole, isAuthenticated, login, logout, setCurrentUserId, employee, customer, project,
+      db, currentUserId, currentRole, isAuthenticated, authReady, login, logout, setCurrentUserId, employee, customer, project,
       addJob, updateJob, deleteJob, setJobStatus, toggleSubtask, addSubtask, addComment, addFile,
       addProject, updateProject, deleteProject, addEmployee, updateEmployee, deleteEmployee,
       addCustomer, updateCustomer, deleteCustomer, addDepartment, addMeeting, deleteMeeting,
