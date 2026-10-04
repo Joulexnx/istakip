@@ -279,7 +279,8 @@ export default function JobDetail() {
       </div>
 
       {/* Öncelik düzenleme (hızlı) */}
-      <div className="mt-4 rounded-xl border bg-card p-5">
+      {currentRole !== 'calisan' && (
+        <div className="mt-4 rounded-xl border bg-card p-5">
         <h2 className="text-sm font-semibold">Öncelik</h2>
         <div className="mt-2 flex gap-2">
           {(Object.keys(PRIORITY_LABELS) as Priority[]).map((p) => (
@@ -292,7 +293,8 @@ export default function JobDetail() {
             </button>
           ))}
         </div>
-      </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmDelete}
