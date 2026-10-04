@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router';
+import { Navigate, Route, Routes, useLocation } from 'react-router';
 import { Toaster } from 'sonner';
 import { AppProvider, useApp } from '@/store/AppContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { JobFormModal, type JobFormValues } from '@/components/jobs/JobFormModal';
+import LoginPage from '@/pages/LoginPage';
 import Dashboard from '@/pages/Dashboard';
 import Jobs from '@/pages/Jobs';
 import JobDetail from '@/pages/JobDetail';
@@ -17,6 +18,17 @@ import Reports from '@/pages/Reports';
 import Notifications from '@/pages/Notifications';
 import Settings from '@/pages/Settings';
 
+function ProtectedRoutes() {
+  const { isAuthenticated } = useApp();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/giris" replace state={{ from: location.pathname }} />;
+  }
+
+  return <Shell />;
+}
+
 function Shell() {
   const { db } = useApp();
   const [jobModal, setJobModal] = useState(false);
@@ -27,11 +39,10 @@ function Shell() {
     setJobModal(true);
   };
 
-  // Tüm veriler silindiyse ayarlar sayfası dışında anlamlı ekran kalmaz
   const empty = db.employees.length === 0;
 
   return (
-    <AppLayout onNewJob={() => openNewJob()}>
+    <AppLayout onNewJob={openNewJob}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/isler" element={<Jobs onNewJob={openNewJob} />} />
@@ -58,10 +69,21 @@ function Shell() {
   );
 }
 
+function AppRoutes() {
+  const { isAuthenticated } = useApp();
+
+  return (
+    <Routes>
+      <Route path="/giris" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/*" element={<ProtectedRoutes />} />
+    </Routes>
+  );
+}
+
 export default function App() {
   return (
     <AppProvider>
-      <Shell />
+      <AppRoutes />
       <Toaster position="top-center" richColors closeButton />
     </AppProvider>
   );
