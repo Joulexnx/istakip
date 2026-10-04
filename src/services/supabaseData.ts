@@ -49,7 +49,9 @@ const mapActivity = (r: Row, accounts: UserAccount[]): ActivityItem => ({
 
 async function readTable<T>(table: string): Promise<T[]> {
   const { data, error } = await supabase.from(table).select('*');
-  if (error) throw error;
+  if (error) {
+    throw new Error(`Supabase ${table} yüklenemedi: ${error.message}`);
+  }
   return (data ?? []) as T[];
 }
 
