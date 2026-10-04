@@ -18,25 +18,21 @@ export async function loginWithSupabase(email: string, password: string): Promis
   if (error) throw error;
   if (!data.user) throw new Error('Supabase kullanıcı oturumu oluşturulamadı.');
 
-  const { data: account, error: accountError } = await supabase
-    .from('user_accounts')
-    .select('id, company_id, employee_id, email, role, active')
-    .eq('auth_user_id', data.user.id)
-    .eq('active', true)
-    .single();
+  const { data: account, error: accountError } = await supabase.rpc('get_my_account');
 
-  if (accountError) {
+  if (accountError || !account?.[0]) {
     await supabase.auth.signOut();
     throw new Error('Kullanıcı hesabı şirket hesabına bağlanmamış.');
   }
 
+  const row = account[0];
   return {
-    id: account.id,
-    companyId: account.company_id,
-    employeeId: account.employee_id,
-    email: account.email,
-    role: account.role,
-    active: account.active,
+    id: row.id,
+    companyId: row.company_id,
+    employeeId: row.employee_id,
+    email: row.email,
+    role: row.role,
+    active: row.active,
   };
 }
 
@@ -55,22 +51,18 @@ export async function getCurrentSupabaseAccount(): Promise<SupabaseAccount | nul
   const session = await getSupabaseSession();
   if (!session?.user) return null;
 
-  const { data: account, error } = await supabase
-    .from('user_accounts')
-    .select('id, company_id, employee_id, email, role, active')
-    .eq('auth_user_id', session.user.id)
-    .eq('active', true)
-    .maybeSingle();
+  const { data: account, error } = await supabase.rpc('get_my_account');
 
   if (error) throw error;
-  if (!account) return null;
+  if (!account?.[0]) return null;
 
+  const row = account[0];
   return {
-    id: account.id,
-    companyId: account.company_id,
-    employeeId: account.employee_id,
-    email: account.email,
-    role: account.role,
-    active: account.active,
+    id: row.id,
+    companyId: row.company_id,
+    employeeId: row.employee_id,
+    email: row.email,
+    role: row.role,
+    active: row.active,
   };
 }
