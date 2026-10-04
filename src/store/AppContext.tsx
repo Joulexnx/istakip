@@ -110,6 +110,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const currentUser = db.employees.find((e) => e.id === currentUserId);
   const currentRole: Role = currentUser?.role ?? 'yonetici';
+  const canManage = currentRole === 'yonetici' || currentRole === 'yardimci';
+  const canAdmin = currentRole === 'yonetici';
 
   const employee = useCallback((id?: string | null) => db.employees.find((e) => e.id === id), [db.employees]);
   const customer = useCallback((id?: string | null) => db.customers.find((c) => c.id === id), [db.customers]);
@@ -130,6 +132,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ---- İşler ----
   const addJob: AppContextValue['addJob'] = useCallback(
     (input) => {
+      if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
       const job: Job = {
         subtasks: [],
         ...input,
@@ -148,7 +151,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
       return job;
     },
-    [mutate]
+    [mutate, canManage]
   );
 
   const updateJob = useCallback(
@@ -160,6 +163,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const deleteJob = useCallback(
     (id: string) => {
+      if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
       mutate((d) => {
         const job = d.jobs.find((j) => j.id === id);
         let nd: DB = { ...d, jobs: d.jobs.filter((j) => j.id !== id) };
@@ -167,7 +171,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return nd;
       });
     },
-    [mutate]
+    [mutate, canManage]
   );
 
   const setJobStatus = useCallback(
@@ -247,52 +251,62 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Projeler ----
   const addProject = useCallback((p: Omit<Project, 'id'>) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     const np: Project = { ...p, id: uid('prj') };
     mutate((d) => pushActivity({ ...d, projects: [np, ...d.projects] }, `"${np.name}" projesini oluşturdu.`));
     return np;
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   const updateProject = useCallback((id: string, patch: Partial<Project>) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     mutate((d) => ({ ...d, projects: d.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   const deleteProject = useCallback((id: string) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     mutate((d) => ({ ...d, projects: d.projects.filter((p) => p.id !== id) }));
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   // ---- Çalışanlar ----
   const addEmployee = useCallback((e: Omit<Employee, 'id'>) => {
+    if (!canAdmin) throw new Error('Bu işlem yalnızca yönetici tarafından yapılabilir.');
     const ne: Employee = { ...e, id: uid('emp') };
     mutate((d) => pushActivity({ ...d, employees: [...d.employees, ne] }, `${ne.name} adlı çalışanı ekledi.`));
     return ne;
-  }, [mutate]);
+  }, [mutate, canAdmin]);
 
   const updateEmployee = useCallback((id: string, patch: Partial<Employee>) => {
+    if (!canAdmin) throw new Error('Bu işlem yalnızca yönetici tarafından yapılabilir.');
     mutate((d) => ({ ...d, employees: d.employees.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
-  }, [mutate]);
+  }, [mutate, canAdmin]);
 
   const deleteEmployee = useCallback((id: string) => {
+    if (!canAdmin) throw new Error('Bu işlem yalnızca yönetici tarafından yapılabilir.');
     mutate((d) => ({ ...d, employees: d.employees.filter((e) => e.id !== id) }));
-  }, [mutate]);
+  }, [mutate, canAdmin]);
 
   // ---- Müşteriler ----
   const addCustomer = useCallback((c: Omit<Customer, 'id'>) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     const nc: Customer = { ...c, id: uid('cus') };
     mutate((d) => pushActivity({ ...d, customers: [nc, ...d.customers] }, `"${nc.company}" müşterisini ekledi.`));
     return nc;
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   const updateCustomer = useCallback((id: string, patch: Partial<Customer>) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     mutate((d) => ({ ...d, customers: d.customers.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   const deleteCustomer = useCallback((id: string) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     mutate((d) => ({ ...d, customers: d.customers.filter((c) => c.id !== id) }));
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   const addDepartment = useCallback((name: string) => {
+    if (!canAdmin) throw new Error('Bu işlem yalnızca yönetici tarafından yapılabilir.');
     mutate((d) => ({ ...d, departments: [...d.departments, { id: uid('dep'), name }] }));
-  }, [mutate]);
+  }, [mutate, canAdmin]);
 
   // ---- Toplantılar ----
   const addMeeting = useCallback((m: Omit<Meeting, 'id'>) => {
@@ -307,6 +321,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Finans ----
   const addTransaction = useCallback((t: Omit<Transaction, 'id'>) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     mutate((d) => {
       const nt: Transaction = { ...t, id: uid('tr') };
       return pushActivity(
@@ -314,11 +329,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         `${t.type === 'gelir' ? 'Gelir' : 'Gider'} kaydı ekledi: ${t.description}`
       );
     });
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   const deleteTransaction = useCallback((id: string) => {
+    if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     mutate((d) => ({ ...d, transactions: d.transactions.filter((t) => t.id !== id) }));
-  }, [mutate]);
+  }, [mutate, canManage]);
 
   // ---- Bildirim / aktivite ----
   const markNotificationRead = useCallback((id: string) => {
@@ -339,11 +355,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Ayarlar ----
   const updateSettings = useCallback((patch: Partial<CompanySettings>) => {
+    if (!canAdmin) throw new Error('Bu işlem yalnızca yönetici tarafından yapılabilir.');
     mutate((d) => ({ ...d, settings: { ...d.settings, ...patch } }));
-  }, [mutate]);
+  }, [mutate, canAdmin]);
 
-  const resetDemo = useCallback(() => setDb(resetDB()), []);
-  const clearAllData = useCallback(() => setDb(clearDB()), []);
+  const resetDemo = useCallback(() => {
+    if (!canAdmin) throw new Error('Bu işlem yalnızca yönetici tarafından yapılabilir.');
+    setDb(resetDB());
+  }, [canAdmin]);
+  const clearAllData = useCallback(() => {
+    if (!canAdmin) throw new Error('Bu işlem yalnızca yönetici tarafından yapılabilir.');
+    setDb(clearDB());
+  }, [canAdmin]);
   const exportData = useCallback(() => exportDB(db), [db]);
 
   const value = useMemo<AppContextValue>(
