@@ -46,7 +46,7 @@ export default function LoginPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-sidebar-foreground">
-            <ShieldCheck className="size-4" /> Güvenli oturum altyapısı
+            <ShieldCheck className="size-4" /> Oturum yönetimi
           </div>
         </section>
 
@@ -119,7 +119,7 @@ export default function LoginPage() {
             <div className="mt-6 rounded-xl border bg-muted/40 p-4">
               <p className="text-xs font-semibold">Geliştirme / demo hesabı</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Şimdilik gerçek sunucu kimlik doğrulaması bağlanana kadar demo çalışanlarıyla oturum açılabilir.
+                Bu sürümde giriş akışı demo kullanıcılarıyla çalışır. Gerçek sunucu kimlik doğrulaması sonraki backend adımında bağlanacaktır.
               </p>
               <div className="mt-3 space-y-1.5">
                 {db.employees.filter((e) => e.active).slice(0, 4).map((employee) => (
