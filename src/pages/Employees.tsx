@@ -19,7 +19,7 @@ import { Switch } from '@/components/ui/switch';
 const AVATAR_COLORS = ['#0d9488', '#2563eb', '#db2777', '#d97706', '#7c3aed', '#dc2626', '#059669', '#4f46e5'];
 
 export default function Employees() {
-  const { db, addEmployee } = useApp();
+  const { db, addEmployee, currentRole } = useApp();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', email: '', departmentId: '', position: '', role: 'calisan' as Role });
   const [error, setError] = useState('');
@@ -50,7 +50,7 @@ export default function Employees() {
       <PageHeader
         title="Çalışanlar"
         subtitle={`${db.employees.filter((e) => e.active).length} aktif çalışan`}
-        actions={<Button onClick={() => setOpen(true)}><Plus className="mr-1.5 size-4" /> Çalışan Ekle</Button>}
+        actions={currentRole === 'yonetici' ? <Button onClick={() => setOpen(true)}><Plus className="mr-1.5 size-4" /> Çalışan Ekle</Button> : undefined}
       />
 
       {db.employees.length === 0 ? (
