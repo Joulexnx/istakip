@@ -173,7 +173,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const account = await loginWithSupabase(normalized, password);
         if (!(await applySupabaseAccount(account))) {
           await logoutFromSupabase().catch(() => undefined);
-          return { ok: false, message: 'Supabase hesabı uygulamadaki aktif kullanıcıyla eşleştirilemedi.' };
+          return { ok: false, message: 'Supabase hesabı doğrulandı ancak şirket verileri yüklenemedi.' };
         }
         return { ok: true };
       } catch (error) {
