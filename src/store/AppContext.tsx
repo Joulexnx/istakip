@@ -20,6 +20,7 @@ import { uid } from '@/lib/format';
 import { isBackendAuthEnabled, loginWithBackend, logoutFromBackend } from '@/services/auth';
 import { getCurrentSupabaseAccount, isSupabaseAuthEnabled, loginWithSupabase, logoutFromSupabase } from '@/services/supabaseAuth';
 import { loadSupabaseDB } from '@/services/supabaseData';
+import { addSupabaseComment, addSupabaseFile, addSupabaseSubtask, deleteSupabaseJob, insertSupabaseJob, setSupabaseJobStatus, toggleSupabaseSubtask, updateSupabaseJob } from '@/services/supabaseJobs';
 
 interface AppContextValue {
   db: DB;
@@ -264,23 +265,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addJob: AppContextValue['addJob'] = useCallback(
     (input) => {
       if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
+      const useSupabase = isSupabaseAuthEnabled();
       const job: Job = {
         subtasks: [],
         ...input,
         companyId: db.company.id,
-        id: uid('job'),
+        id: useSupabase ? crypto.randomUUID() : uid('job'),
         comments: [],
         files: [],
         createdAt: new Date().toISOString(),
         completedAt: input.status === 'tamamlandi' ? new Date().toISOString() : null,
       };
-      mutate((d) => {
-        let nd = { ...d, jobs: [job, ...d.jobs] };
-        nd = pushActivity(nd, `"${job.title}" işini oluşturdu.`);
-        const assignee = nd.employees.find((e) => e.id === job.assigneeId);
-        if (assignee) nd = pushNotification(nd, `${assignee.name} kişisine yeni iş atandı: "${job.title}"`, 'info', job.id);
-        return nd;
-      });
+      if (!useSupabase) {
+        mutate((d) => ({ ...d, jobs: [job, ...d.jobs] }));
+        return job;
+      }
+      void insertSupabaseJob(job)
+        .then((saved) => mutate((d) => ({ ...d, jobs: [saved, ...d.jobs.filter((j) => j.id !== saved.id)] })))
+        .catch((error) => toast.error(error instanceof Error ? error.message : 'İş oluşturulamadı.'));
       return job;
     },
     [mutate, canManage, db.company.id]
@@ -293,7 +295,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!target || target.companyId !== db.company.id) throw new Error('Bu işe erişim yetkiniz yok.');
       const { companyId: _companyId, ...safePatch } = patch;
       void _companyId;
-      mutate((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id && j.companyId === d.company.id ? { ...j, ...safePatch, companyId: d.company.id } : j)) }));
+      if (!isSupabaseAuthEnabled()) {
+        mutate((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id && j.companyId === d.company.id ? { ...j, ...safePatch, companyId: d.company.id } : j)) }));
+        return;
+      }
+      void updateSupabaseJob(id, safePatch)
+        .then((saved) => mutate((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id ? saved : j)) })))
+        .catch((error) => toast.error(error instanceof Error ? error.message : 'İş güncellenemedi.'));
     },
     [mutate, canManage, db.jobs, db.company.id]
   );
@@ -303,12 +311,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
       const target = db.jobs.find((j) => j.id === id);
       if (!target || target.companyId !== db.company.id) throw new Error('Bu işe erişim yetkiniz yok.');
-      mutate((d) => {
-        const job = d.jobs.find((j) => j.id === id && j.companyId === d.company.id);
-        let nd: DB = { ...d, jobs: d.jobs.filter((j) => !(j.id === id && j.companyId === d.company.id)) };
-        if (job) nd = pushActivity(nd, `"${job.title}" işini sildi.`);
-        return nd;
-      });
+      if (!isSupabaseAuthEnabled()) {
+        mutate((d) => ({ ...d, jobs: d.jobs.filter((j) => !(j.id === id && j.companyId === d.company.id)) }));
+        return;
+      }
+      void deleteSupabaseJob(id)
+        .then(() => mutate((d) => ({ ...d, jobs: d.jobs.filter((j) => j.id !== id) })))
+        .catch((error) => toast.error(error instanceof Error ? error.message : 'İş silinemedi.'));
     },
     [mutate, canManage, db.jobs, db.company.id]
   );
@@ -317,18 +326,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (id: string, status: JobStatus) => {
       const target = db.jobs.find((j) => j.id === id);
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
-      mutate((d) => {
-        const job = d.jobs.find((j) => j.id === id);
-        if (!job || job.status === status) return d;
-        let nd: DB = {
-          ...d,
-          jobs: d.jobs.map((j) =>
-            j.id === id ? { ...j, status, completedAt: status === 'tamamlandi' ? new Date().toISOString() : null } : j
-          ),
-        };
-        nd = pushActivity(nd, `"${job.title}" işinin durumunu değiştirdi.`);
-        return nd;
-      });
+      if (!isSupabaseAuthEnabled()) {
+        mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === id ? { ...j, status, completedAt: status === 'tamamlandi' ? new Date().toISOString() : null } : j) }));
+        return;
+      }
+      void setSupabaseJobStatus(id, status)
+        .then((saved) => mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === id ? saved : j) })))
+        .catch((error) => toast.error(error instanceof Error ? error.message : 'İş durumu güncellenemedi.'));
     },
     [mutate, db.jobs, canAccessJob]
   );
@@ -337,14 +341,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (jobId: string, subId: string) => {
       const target = db.jobs.find((j) => j.id === jobId);
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
-      mutate((d) => ({
-        ...d,
-        jobs: d.jobs.map((j) =>
-          j.id === jobId
-            ? { ...j, subtasks: j.subtasks.map((s) => (s.id === subId ? { ...s, done: !s.done } : s)) }
-            : j
-        ),
-      }));
+      if (!isSupabaseAuthEnabled()) {
+        mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? { ...j, subtasks: j.subtasks.map((s) => s.id === subId ? { ...s, done: !s.done } : s) } : j) }));
+        return;
+      }
+      void toggleSupabaseSubtask(jobId, subId)
+        .then((saved) => mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? saved : j) })))
+        .catch((error) => toast.error(error instanceof Error ? error.message : 'Alt görev güncellenemedi.'));
     },
     [mutate, db.jobs, canAccessJob]
   );
@@ -353,12 +356,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (jobId: string, title: string) => {
       const target = db.jobs.find((j) => j.id === jobId);
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
-      mutate((d) => ({
-        ...d,
-        jobs: d.jobs.map((j) =>
-          j.id === jobId ? { ...j, subtasks: [...j.subtasks, { id: uid('sub'), title, done: false }] } : j
-        ),
-      }));
+      if (!isSupabaseAuthEnabled()) {
+        mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? { ...j, subtasks: [...j.subtasks, { id: uid('sub'), title, done: false }] } : j) }));
+        return;
+      }
+      void addSupabaseSubtask(jobId, title)
+        .then((saved) => mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? saved : j) })))
+        .catch((error) => toast.error(error instanceof Error ? error.message : 'Alt görev eklenemedi.'));
     },
     [mutate, db.jobs, canAccessJob]
   );
@@ -367,14 +371,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (jobId: string, text: string) => {
       const target = db.jobs.find((j) => j.id === jobId);
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
-      mutate((d) => {
-        const job = d.jobs.find((j) => j.id === jobId);
-        const comment: JobComment = { id: uid('cm'), userId: currentUserId, text, createdAt: new Date().toISOString() };
-        let nd: DB = { ...d, jobs: d.jobs.map((j) => (j.id === jobId ? { ...j, comments: [...j.comments, comment] } : j)) };
-        nd = pushActivity(nd, `"${job?.title ?? 'İş'}" işine yorum ekledi.`);
-        nd = pushNotification(nd, `"${job?.title ?? 'İş'}" işine yeni bir yorum eklendi.`, 'info', jobId);
-        return nd;
-      });
+      if (!isSupabaseAuthEnabled()) {
+        mutate((d) => {
+          const comment: JobComment = { id: uid('cm'), userId: currentUserId, text, createdAt: new Date().toISOString() };
+          return { ...d, jobs: d.jobs.map((j) => j.id === jobId ? { ...j, comments: [...j.comments, comment] } : j) };
+        });
+        return;
+      }
+      void addSupabaseComment(jobId, text)
+        .then((saved) => mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? saved : j) })))
+        .catch((error) => toast.error(error instanceof Error ? error.message : 'Yorum eklenemedi.'));
     },
     [mutate, currentUserId, db.jobs, canAccessJob]
   );
@@ -385,15 +391,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
       const ext = name.split('.').pop()?.toLowerCase() ?? '';
       const kind = (['pdf', 'jpg', 'png', 'docx', 'xlsx'] as const).includes(ext as never) ? (ext as 'pdf') : 'diger';
-      mutate((d) => {
-        const job = d.jobs.find((j) => j.id === jobId);
-        let nd: DB = {
-          ...d,
-          jobs: d.jobs.map((j) => (j.id === jobId ? { ...j, files: [...j.files, { id: uid('f'), name, kind }] } : j)),
-        };
-        nd = pushActivity(nd, `"${job?.title ?? 'İş'}" işine dosya ekledi (${name}).`);
-        return nd;
-      });
+      if (!isSupabaseAuthEnabled()) {
+        mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? { ...j, files: [...j.files, { id: uid('f'), name, kind }] } : j) }));
+        return;
+      }
+      void addSupabaseFile(jobId, name, kind)
+        .then((saved) => mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? saved : j) })))
+        .catch((error) => toast.error(error instanceof Error ? error.message : 'Dosya kaydı eklenemedi.'));
     },
     [mutate, db.jobs, canAccessJob]
   );
