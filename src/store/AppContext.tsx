@@ -266,7 +266,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addJob: AppContextValue['addJob'] = useCallback(
     (input) => {
       if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
-      const useSupabase = isSupabaseAuthEnabled();
+      const useSupabase = isSupabaseAuthEnabled;
       const job: Job = {
         subtasks: [],
         ...input,
@@ -296,7 +296,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!target || target.companyId !== db.company.id) throw new Error('Bu işe erişim yetkiniz yok.');
       const { companyId: _companyId, ...safePatch } = patch;
       void _companyId;
-      if (!isSupabaseAuthEnabled()) {
+      if (!isSupabaseAuthEnabled) {
         mutate((d) => ({ ...d, jobs: d.jobs.map((j) => (j.id === id && j.companyId === d.company.id ? { ...j, ...safePatch, companyId: d.company.id } : j)) }));
         return;
       }
@@ -312,7 +312,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
       const target = db.jobs.find((j) => j.id === id);
       if (!target || target.companyId !== db.company.id) throw new Error('Bu işe erişim yetkiniz yok.');
-      if (!isSupabaseAuthEnabled()) {
+      if (!isSupabaseAuthEnabled) {
         mutate((d) => ({ ...d, jobs: d.jobs.filter((j) => !(j.id === id && j.companyId === d.company.id)) }));
         return;
       }
@@ -327,7 +327,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (id: string, status: JobStatus) => {
       const target = db.jobs.find((j) => j.id === id);
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
-      if (!isSupabaseAuthEnabled()) {
+      if (!isSupabaseAuthEnabled) {
         mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === id ? { ...j, status, completedAt: status === 'tamamlandi' ? new Date().toISOString() : null } : j) }));
         return;
       }
@@ -342,7 +342,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (jobId: string, subId: string) => {
       const target = db.jobs.find((j) => j.id === jobId);
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
-      if (!isSupabaseAuthEnabled()) {
+      if (!isSupabaseAuthEnabled) {
         mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? { ...j, subtasks: j.subtasks.map((s) => s.id === subId ? { ...s, done: !s.done } : s) } : j) }));
         return;
       }
@@ -357,7 +357,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (jobId: string, title: string) => {
       const target = db.jobs.find((j) => j.id === jobId);
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
-      if (!isSupabaseAuthEnabled()) {
+      if (!isSupabaseAuthEnabled) {
         mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? { ...j, subtasks: [...j.subtasks, { id: uid('sub'), title, done: false }] } : j) }));
         return;
       }
@@ -372,7 +372,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (jobId: string, text: string) => {
       const target = db.jobs.find((j) => j.id === jobId);
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
-      if (!isSupabaseAuthEnabled()) {
+      if (!isSupabaseAuthEnabled) {
         mutate((d) => {
           const comment: JobComment = { id: uid('cm'), userId: currentUserId, text, createdAt: new Date().toISOString() };
           return { ...d, jobs: d.jobs.map((j) => j.id === jobId ? { ...j, comments: [...j.comments, comment] } : j) };
@@ -392,7 +392,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!canAccessJob(target)) throw new Error('Bu işe erişim yetkiniz yok.');
       const ext = name.split('.').pop()?.toLowerCase() ?? '';
       const kind = (['pdf', 'jpg', 'png', 'docx', 'xlsx'] as const).includes(ext as never) ? (ext as 'pdf') : 'diger';
-      if (!isSupabaseAuthEnabled()) {
+      if (!isSupabaseAuthEnabled) {
         mutate((d) => ({ ...d, jobs: d.jobs.map((j) => j.id === jobId ? { ...j, files: [...j.files, { id: uid('f'), name, kind }] } : j) }));
         return;
       }
