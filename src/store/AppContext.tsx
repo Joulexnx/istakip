@@ -22,6 +22,9 @@ interface AppContextValue {
   db: DB;
   currentUserId: string;
   currentRole: Role;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => { ok: boolean; message?: string };
+  logout: () => void;
   setCurrentUserId: (id: string) => void;
   // yardımcılar
   employee: (id: string | null | undefined) => Employee | undefined;
@@ -68,12 +71,13 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 const USER_KEY = 'sits_current_user';
+const AUTH_KEY = 'sits_authenticated';
+const DEMO_PASSWORD = '123456';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(() => loadDB());
-  const [currentUserId, setCurrentUserIdState] = useState<string>(() => {
-    return localStorage.getItem(USER_KEY) || 'emp_ahmet';
-  });
+  const [currentUserId, setCurrentUserIdState] = useState<string>(() => localStorage.getItem(USER_KEY) || 'emp_ahmet');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => localStorage.getItem(AUTH_KEY) === '1');
 
   useEffect(() => saveDB(db), [db]);
 
@@ -84,6 +88,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setCurrentUserId = useCallback((id: string) => {
     localStorage.setItem(USER_KEY, id);
     setCurrentUserIdState(id);
+  }, []);
+
+  const login = useCallback((email: string, password: string) => {
+    const normalized = email.trim().toLocaleLowerCase('tr-TR');
+    const user = db.employees.find((e) => e.email.toLocaleLowerCase('tr-TR') === normalized && e.active);
+    if (!user) return { ok: false, message: 'Aktif kullanıcı bulunamadı.' };
+    if (password !== DEMO_PASSWORD) return { ok: false, message: 'Şifre hatalı. Demo şifre: 123456' };
+    localStorage.setItem(USER_KEY, user.id);
+    localStorage.setItem(AUTH_KEY, '1');
+    setCurrentUserIdState(user.id);
+    setIsAuthenticated(true);
+    return { ok: true };
+  }, [db.employees]);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(USER_KEY);
+    setIsAuthenticated(false);
   }, []);
 
   const currentUser = db.employees.find((e) => e.id === currentUserId);
@@ -329,6 +351,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       db,
       currentUserId,
       currentRole,
+      isAuthenticated,
+      login,
+      logout,
       setCurrentUserId,
       employee,
       customer,
@@ -365,7 +390,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       exportData,
     }),
     [
-      db, currentUserId, currentRole, setCurrentUserId, employee, customer, project,
+      db, currentUserId, currentRole, isAuthenticated, login, logout, setCurrentUserId, employee, customer, project,
       addJob, updateJob, deleteJob, setJobStatus, toggleSubtask, addSubtask, addComment, addFile,
       addProject, updateProject, deleteProject, addEmployee, updateEmployee, deleteEmployee,
       addCustomer, updateCustomer, deleteCustomer, addDepartment, addMeeting, deleteMeeting,
