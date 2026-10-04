@@ -19,6 +19,7 @@ import { clearDB, exportDB, loadDB, resetDB, saveDB } from '@/services/storage';
 import { uid } from '@/lib/format';
 import { isBackendAuthEnabled, loginWithBackend, logoutFromBackend } from '@/services/auth';
 import { getCurrentSupabaseAccount, isSupabaseAuthEnabled, loginWithSupabase, logoutFromSupabase } from '@/services/supabaseAuth';
+import { loadSupabaseDB } from '@/services/supabaseData';
 
 interface AppContextValue {
   db: DB;
@@ -96,8 +97,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentUserIdState(id);
   }, []);
 
-  const applySupabaseAccount = useCallback((account: Awaited<ReturnType<typeof getCurrentSupabaseAccount>>) => {
+  const applySupabaseAccount = useCallback(async (account: Awaited<ReturnType<typeof getCurrentSupabaseAccount>>) => {
     if (!account || !account.active) return false;
+
+    try {
+      const remoteDb = await loadSupabaseDB();
+      if (remoteDb && account.employeeId) {
+        setDb(remoteDb);
+        setCurrentUserIdState(account.employeeId);
+        localStorage.setItem(USER_KEY, account.employeeId);
+        localStorage.setItem(AUTH_KEY, '1');
+        setIsAuthenticated(true);
+        return true;
+      }
+    } catch {
+      // Supabase veri yükleme başarısızsa mevcut yerel veriyle oturum açılır.
+    }
 
     const normalized = account.email.toLocaleLowerCase('tr-TR');
     const localUser =
@@ -128,7 +143,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const applied = applySupabaseAccount(account);
+        const applied = await applySupabaseAccount(account);
         if (!applied) {
           localStorage.removeItem(AUTH_KEY);
           localStorage.removeItem(USER_KEY);
@@ -157,7 +172,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseAuthEnabled) {
       try {
         const account = await loginWithSupabase(normalized, password);
-        if (!applySupabaseAccount(account)) {
+        if (!(await applySupabaseAccount(account))) {
           await logoutFromSupabase().catch(() => undefined);
           return { ok: false, message: 'Supabase hesabı uygulamadaki aktif kullanıcıyla eşleştirilemedi.' };
         }
