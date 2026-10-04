@@ -120,7 +120,7 @@ begin
   update public.jobs
      set subtasks = coalesce(subtasks, '[]'::jsonb) || jsonb_build_array(
        jsonb_build_object(
-         'id', gen_random_uuid()::text,
+         'id', public.gen_random_uuid()::text,
          'title', trim(p_title),
          'done', false
        )
@@ -171,7 +171,7 @@ begin
   update public.jobs
      set comments = coalesce(comments, '[]'::jsonb) || jsonb_build_array(
        jsonb_build_object(
-         'id', gen_random_uuid()::text,
+         'id', public.gen_random_uuid()::text,
          'userId', v_employee_id::text,
          'text', trim(p_text),
          'createdAt', now()
@@ -220,7 +220,7 @@ begin
   update public.jobs
      set files = coalesce(files, '[]'::jsonb) || jsonb_build_array(
        jsonb_build_object(
-         'id', gen_random_uuid()::text,
+         'id', public.gen_random_uuid()::text,
          'name', trim(p_name),
          'kind', p_kind
        )
