@@ -63,7 +63,7 @@ export async function loadSupabaseDB(): Promise<DB | null> {
     ]);
 
   const company = companies[0];
-  if (!company || jobs.length === 0) return null;
+  if (!company) return null;
 
   const userAccounts: UserAccount[] = accounts.map((r) => ({
     id: r.id, companyId: r.company_id, employeeId: r.employee_id, email: r.email,
