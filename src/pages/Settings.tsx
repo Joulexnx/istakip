@@ -1,22 +1,17 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Building2, Database, Download, Moon, Plus, RefreshCcw, Sun, Trash2 } from 'lucide-react';
+import { Building2, Database, Download, Moon, Plus, Sun } from 'lucide-react';
 import { useApp } from '@/store/AppContext';
 import { PageHeader } from '@/components/common/Basics';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 
 export default function Settings() {
-  const { db, updateSettings, addDepartment, resetDemo, clearAllData, exportData } = useApp();
+  const { db, updateSettings, addDepartment, exportData } = useApp();
   const [company, setCompany] = useState(db.settings);
   const [newDept, setNewDept] = useState('');
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
-  const [clearText, setClearText] = useState('');
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -108,64 +103,16 @@ export default function Settings() {
       {/* Veri yönetimi */}
       <section className="rounded-xl border bg-card p-5">
         <h2 className="flex items-center gap-2 text-sm font-semibold"><Database className="size-4" /> Veri Yönetimi</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4">
           <Button variant="outline" onClick={() => { exportData(); toast.success('Yedek dosyası indirildi.'); }}>
             <Download className="mr-1.5 size-4" /> Verileri Dışa Aktar
           </Button>
-          <Button variant="outline" onClick={() => setConfirmReset(true)}>
-            <RefreshCcw className="mr-1.5 size-4" /> Demo Verilerini Yükle
-          </Button>
-          <Button variant="outline" className="text-destructive" onClick={() => { setClearText(''); setConfirmClear(true); }}>
-            <Trash2 className="mr-1.5 size-4" /> Tüm Verileri Sil
-          </Button>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Veriler şu anda bu tarayıcıda saklanmaktadır. Dışa aktarım, tüm verilerinizi JSON yedeği olarak indirir.
+          Şirket verilerinizi JSON yedeği olarak dışa aktarabilirsiniz. Veri silme ve demo veri işlemleri güvenlik nedeniyle bu ekrandan kaldırılmıştır.
         </p>
       </section>
 
-      <ConfirmDialog
-        open={confirmReset}
-        onOpenChange={setConfirmReset}
-        title="Demo verileri yüklensin mi?"
-        description="Mevcut tüm veriler silinip örnek şirket verileri yeniden yüklenecek."
-        confirmLabel="Evet, yükle"
-        onConfirm={() => {
-          resetDemo();
-          setCompany({ ...db.settings });
-          toast.success('Demo veriler yüklendi.');
-        }}
-      />
-
-      <Dialog open={confirmClear} onOpenChange={setConfirmClear}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Tüm veriler silinsin mi?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            İşler, projeler, müşteriler, çalışanlar ve tüm kayıtlar kalıcı olarak silinecek. Bu işlem geri alınamaz.
-            Devam etmek için aşağıya <strong>SİL</strong> yazın.
-          </p>
-          <Input value={clearText} onChange={(e) => setClearText(e.target.value)} placeholder="SİL" autoFocus />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setConfirmClear(false)}>Vazgeç</Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (clearText !== 'SİL') {
-                  toast.error('Onay için SİL yazmalısınız.');
-                  return;
-                }
-                clearAllData();
-                setConfirmClear(false);
-                toast.success('Tüm veriler silindi.');
-              }}
-            >
-              Kalıcı olarak sil
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
