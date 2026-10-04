@@ -88,7 +88,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
   const [authReady, setAuthReady] = useState<boolean>(() => !isSupabaseAuthEnabled);
 
-  useEffect(() => {\n    if (!isSupabaseAuthEnabled) saveDB(db);\n  }, [db]);
+  useEffect(() => {
+    if (!isSupabaseAuthEnabled) saveDB(db);
+  }, [db]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', db.settings.theme === 'dark');
