@@ -6,7 +6,7 @@ type CustomerRow = Record<string, unknown>;
 const mapCustomer = (r: CustomerRow): Customer => ({
   companyId: String(r.company_id),
   id: String(r.id),
-  company: String(r.company),
+  company: String(r.company_name ?? r.company ?? ''),
   contact: String(r.contact ?? ''),
   phone: String(r.phone ?? ''),
   email: String(r.email ?? ''),
@@ -28,7 +28,7 @@ export async function insertSupabaseCustomer(customer: Customer): Promise<Custom
   const { data, error } = await supabase.from('customers').insert({
     id: customer.id,
     company_id: customer.companyId,
-    company: customer.company,
+    company_name: customer.company,
     contact: customer.contact,
     phone: customer.phone,
     email: customer.email,
@@ -45,7 +45,7 @@ export async function insertSupabaseCustomer(customer: Customer): Promise<Custom
 
 export async function updateSupabaseCustomer(id: string, patch: Partial<Customer>): Promise<Customer> {
   const row: Record<string, unknown> = {};
-  if (patch.company !== undefined) row.company = patch.company;
+  if (patch.company !== undefined) row.company_name = patch.company;
   if (patch.contact !== undefined) row.contact = patch.contact;
   if (patch.phone !== undefined) row.phone = patch.phone;
   if (patch.email !== undefined) row.email = patch.email;
