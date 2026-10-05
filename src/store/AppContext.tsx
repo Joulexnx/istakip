@@ -23,6 +23,7 @@ import { getCurrentSupabaseAccount, isSupabaseAuthEnabled, loginWithSupabase, lo
 import { loadSupabaseDB } from '@/services/supabaseData';
 import { addSupabaseComment, addSupabaseFile, addSupabaseSubtask, deleteSupabaseJob, insertSupabaseJob, setSupabaseJobStatus, toggleSupabaseSubtask, updateSupabaseJob } from '@/services/supabaseJobs';
 import { deleteSupabaseProject, insertSupabaseProject, updateSupabaseProject } from '@/services/supabaseProjects';
+import { deleteSupabaseCustomer, insertSupabaseCustomer, updateSupabaseCustomer } from '@/services/supabaseCustomers';
 
 interface AppContextValue {
   db: DB;
@@ -470,8 +471,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ---- Müşteriler ----
   const addCustomer = useCallback((c: Omit<Customer, 'companyId' | 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
-    const nc: Customer = { ...c, companyId: db.company.id, id: uid('cus') };
-    mutate((d) => pushActivity({ ...d, customers: [nc, ...d.customers] }, `"${nc.company}" müşterisini ekledi.`));
+    const nc: Customer = { ...c, companyId: db.company.id, id: isSupabaseAuthEnabled ? crypto.randomUUID() : uid('cus') };
+
+    if (!isSupabaseAuthEnabled) {
+      mutate((d) => pushActivity({ ...d, customers: [nc, ...d.customers] }, `"${nc.company}" müşterisini ekledi.`));
+      return nc;
+    }
+
+    void insertSupabaseCustomer(nc)
+      .then((saved) => mutate((d) => pushActivity({ ...d, customers: [saved, ...d.customers] }, `"${saved.company}" müşterisini ekledi.`)))
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Müşteri oluşturulamadı.'));
     return nc;
   }, [mutate, canManage, db.company.id]);
 
@@ -481,14 +490,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!target || target.companyId !== db.company.id) throw new Error('Bu müşteriye erişim yetkiniz yok.');
     const { companyId: _companyId, ...safePatch } = patch;
     void _companyId;
-    mutate((d) => ({ ...d, customers: d.customers.map((c) => (c.id === id && c.companyId === d.company.id ? { ...c, ...safePatch, companyId: d.company.id } : c)) }));
+
+    if (!isSupabaseAuthEnabled) {
+      mutate((d) => ({ ...d, customers: d.customers.map((c) => (c.id === id && c.companyId === d.company.id ? { ...c, ...safePatch, companyId: d.company.id } : c)) }));
+      return;
+    }
+
+    void updateSupabaseCustomer(id, safePatch)
+      .then((saved) => mutate((d) => ({ ...d, customers: d.customers.map((c) => c.id === id ? saved : c) })))
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Müşteri güncellenemedi.'));
   }, [mutate, canManage, db.customers, db.company.id]);
 
   const deleteCustomer = useCallback((id: string) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     const target = db.customers.find((c) => c.id === id);
     if (!target || target.companyId !== db.company.id) throw new Error('Bu müşteriye erişim yetkiniz yok.');
-    mutate((d) => ({ ...d, customers: d.customers.filter((c) => !(c.id === id && c.companyId === d.company.id)) }));
+
+    if (!isSupabaseAuthEnabled) {
+      mutate((d) => ({ ...d, customers: d.customers.filter((c) => !(c.id === id && c.companyId === d.company.id)) }));
+      return;
+    }
+
+    void deleteSupabaseCustomer(id)
+      .then(() => mutate((d) => ({ ...d, customers: d.customers.filter((c) => c.id !== id) })))
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Müşteri silinemedi.'));
   }, [mutate, canManage, db.customers, db.company.id]);
 
   const addDepartment = useCallback((name: string) => {
