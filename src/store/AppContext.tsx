@@ -22,6 +22,7 @@ import { isBackendAuthEnabled, loginWithBackend, logoutFromBackend } from '@/ser
 import { getCurrentSupabaseAccount, isSupabaseAuthEnabled, loginWithSupabase, logoutFromSupabase } from '@/services/supabaseAuth';
 import { loadSupabaseDB } from '@/services/supabaseData';
 import { addSupabaseComment, addSupabaseFile, addSupabaseSubtask, deleteSupabaseJob, insertSupabaseJob, setSupabaseJobStatus, toggleSupabaseSubtask, updateSupabaseJob } from '@/services/supabaseJobs';
+import { deleteSupabaseProject, insertSupabaseProject, updateSupabaseProject } from '@/services/supabaseProjects';
 
 interface AppContextValue {
   db: DB;
@@ -403,8 +404,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ---- Projeler ----
   const addProject = useCallback((p: Omit<Project, 'companyId' | 'id'>) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
-    const np: Project = { ...p, companyId: db.company.id, id: uid('prj') };
-    mutate((d) => pushActivity({ ...d, projects: [np, ...d.projects] }, `"${np.name}" projesini oluşturdu.`));
+    const np: Project = { ...p, companyId: db.company.id, id: isSupabaseAuthEnabled ? crypto.randomUUID() : uid('prj') };
+
+    if (!isSupabaseAuthEnabled) {
+      mutate((d) => pushActivity({ ...d, projects: [np, ...d.projects] }, `"${np.name}" projesini oluşturdu.`));
+      return np;
+    }
+
+    void insertSupabaseProject(np)
+      .then((saved) => mutate((d) => pushActivity({ ...d, projects: [saved, ...d.projects] }, `"${saved.name}" projesini oluşturdu.`)))
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Proje oluşturulamadı.'));
     return np;
   }, [mutate, canManage, db.company.id]);
 
@@ -414,14 +423,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!target || target.companyId !== db.company.id) throw new Error('Bu projeye erişim yetkiniz yok.');
     const { companyId: _companyId, ...safePatch } = patch;
     void _companyId;
-    mutate((d) => ({ ...d, projects: d.projects.map((p) => (p.id === id && p.companyId === d.company.id ? { ...p, ...safePatch, companyId: d.company.id } : p)) }));
+
+    if (!isSupabaseAuthEnabled) {
+      mutate((d) => ({ ...d, projects: d.projects.map((p) => (p.id === id && p.companyId === d.company.id ? { ...p, ...safePatch, companyId: d.company.id } : p)) }));
+      return;
+    }
+
+    void updateSupabaseProject(id, safePatch)
+      .then((saved) => mutate((d) => ({ ...d, projects: d.projects.map((p) => p.id === id ? saved : p) })))
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Proje güncellenemedi.'));
   }, [mutate, canManage, db.projects, db.company.id]);
 
   const deleteProject = useCallback((id: string) => {
     if (!canManage) throw new Error('Bu işlem için yönetici yetkisi gereklidir.');
     const target = db.projects.find((p) => p.id === id);
     if (!target || target.companyId !== db.company.id) throw new Error('Bu projeye erişim yetkiniz yok.');
-    mutate((d) => ({ ...d, projects: d.projects.filter((p) => !(p.id === id && p.companyId === d.company.id)) }));
+
+    if (!isSupabaseAuthEnabled) {
+      mutate((d) => ({ ...d, projects: d.projects.filter((p) => !(p.id === id && p.companyId === d.company.id)) }));
+      return;
+    }
+
+    void deleteSupabaseProject(id)
+      .then(() => mutate((d) => ({ ...d, projects: d.projects.filter((p) => p.id !== id) })))
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Proje silinemedi.'));
   }, [mutate, canManage, db.projects, db.company.id]);
 
   // ---- Çalışanlar ----
